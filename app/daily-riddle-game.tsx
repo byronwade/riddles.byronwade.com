@@ -281,31 +281,31 @@ function CompletionState({ streak, totalSolved }: { streak: number; totalSolved:
 	}, []);
 
 	return (
-		<div className="text-center space-y-8 animate-in fade-in-50 slide-in-from-bottom-4 duration-700">
-			<div className="space-y-4">
-				<div className="text-6xl">🎉</div>
-				<h2 className="text-2xl font-bold text-foreground">Congratulations!</h2>
-				<p className="text-muted-foreground">You&apos;ve completed today&apos;s riddle!</p>
+		<div className="text-center space-y-6 sm:space-y-8 animate-in fade-in-50 slide-in-from-bottom-4 duration-700">
+			<div className="space-y-3 sm:space-y-4">
+				<div className="text-4xl sm:text-5xl lg:text-6xl">🎉</div>
+				<h2 className="text-xl sm:text-2xl font-bold text-foreground">Congratulations!</h2>
+				<p className="text-sm sm:text-base text-muted-foreground">You&apos;ve completed today&apos;s riddle!</p>
 			</div>
 
-			<div className="space-y-4">
-				<div className="flex justify-center gap-8 text-sm">
+			<div className="space-y-3 sm:space-y-4">
+				<div className="flex justify-center gap-4 sm:gap-8 text-sm">
 					<div className="text-center">
-						<div className="text-3xl font-bold text-green-600 dark:text-green-400">{streak}</div>
-						<div className="text-muted-foreground">Day Streak</div>
+						<div className="text-2xl sm:text-3xl font-bold text-green-600 dark:text-green-400">{streak}</div>
+						<div className="text-muted-foreground text-xs sm:text-sm">Day Streak</div>
 					</div>
-					<div className="w-px h-12 bg-border" />
+					<div className="w-px h-10 sm:h-12 bg-border" />
 					<div className="text-center">
-						<div className="text-3xl font-bold text-blue-600 dark:text-blue-400">{totalSolved}</div>
-						<div className="text-muted-foreground">Total Solved</div>
+						<div className="text-2xl sm:text-3xl font-bold text-blue-600 dark:text-blue-400">{totalSolved}</div>
+						<div className="text-muted-foreground text-xs sm:text-sm">Total Solved</div>
 					</div>
 				</div>
 			</div>
 
 			{/* Achievements */}
 			{achievements.length > 0 && (
-				<div className="space-y-3">
-					<h3 className="text-lg font-semibold text-foreground">🏆 Achievements</h3>
+				<div className="space-y-2 sm:space-y-3">
+					<h3 className="text-base sm:text-lg font-semibold text-foreground">🏆 Achievements</h3>
 					<div className="space-y-2 max-w-md mx-auto">
 						{achievements.slice(-3).map((achievement) => (
 							<AchievementBadge key={achievement.id} achievement={achievement} />
@@ -319,9 +319,9 @@ function CompletionState({ streak, totalSolved }: { streak: number; totalSolved:
 				📱 Share Results
 			</Button>
 
-			<div className="space-y-2">
-				<p className="text-sm text-muted-foreground">Next riddle in:</p>
-				<div className="text-2xl font-mono font-bold text-foreground">{timeUntilNext}</div>
+			<div className="space-y-1 sm:space-y-2">
+				<p className="text-xs sm:text-sm text-muted-foreground">Next riddle in:</p>
+				<div className="text-xl sm:text-2xl font-mono font-bold text-foreground">{timeUntilNext}</div>
 				<p className="text-xs text-muted-foreground">Come back tomorrow for a new challenge!</p>
 			</div>
 		</div>
@@ -473,13 +473,13 @@ export function DailyRiddleGame({ initialRiddle }: { initialRiddle: Riddle }) {
 		<TooltipProvider>
 			<div className="relative min-h-screen">
 				{/* Top Bar with Stats and Theme Toggle */}
-				<div className="flex items-start justify-between mb-16">
+				<div className="flex items-start justify-between mb-8 sm:mb-12 lg:mb-16">
 					{/* Stats - Top Left Corner */}
-					<div className="flex items-center gap-4 text-sm">
+					<div className="flex items-center gap-2 sm:gap-4 text-sm">
 						<Tooltip>
 							<TooltipTrigger asChild>
 								<div className="text-center cursor-help hover:scale-105 transition-transform duration-200">
-									<div className="text-xl font-bold text-foreground">{streak}</div>
+									<div className="text-lg sm:text-xl font-bold text-foreground">{streak}</div>
 									<div className="text-muted-foreground text-xs">Streak</div>
 									{achievements.some((a) => a.id.includes("streak")) && <div className="text-xs">🏆</div>}
 								</div>
@@ -494,7 +494,7 @@ export function DailyRiddleGame({ initialRiddle }: { initialRiddle: Riddle }) {
 						<Tooltip>
 							<TooltipTrigger asChild>
 								<div className="text-center cursor-help hover:scale-105 transition-transform duration-200">
-									<div className="text-xl font-bold text-foreground">{totalSolved}</div>
+									<div className="text-lg sm:text-xl font-bold text-foreground">{totalSolved}</div>
 									<div className="text-muted-foreground text-xs">Solved</div>
 									{achievements.some((a) => a.id.includes("total")) && <div className="text-xs">🏆</div>}
 								</div>
@@ -511,7 +511,7 @@ export function DailyRiddleGame({ initialRiddle }: { initialRiddle: Riddle }) {
 								<Tooltip>
 									<TooltipTrigger asChild>
 										<div className="text-center cursor-help hover:scale-105 transition-transform duration-200">
-											<div className="text-xl font-bold text-foreground">{attempts}</div>
+											<div className="text-lg sm:text-xl font-bold text-foreground">{attempts}</div>
 											<div className="text-muted-foreground text-xs">Attempts</div>
 										</div>
 									</TooltipTrigger>
@@ -537,20 +537,20 @@ export function DailyRiddleGame({ initialRiddle }: { initialRiddle: Riddle }) {
 				</div>
 
 				{/* Main Content */}
-				<div className="space-y-12 max-w-2xl mx-auto">
+				<div className="space-y-6 sm:space-y-8 lg:space-y-12 max-w-2xl mx-auto">
 					{isCompleted ? (
 						<CompletionState streak={streak} totalSolved={totalSolved} />
 					) : (
 						<>
 							{/* Riddle - Clean typography with better animation */}
-							<div className="text-center space-y-6">
+							<div className="text-center space-y-4 sm:space-y-6">
 								<div className="animate-in fade-in-50 slide-in-from-bottom-4 duration-700">
-									<p className="text-3xl font-medium text-foreground leading-relaxed text-balance hover:text-foreground/80 transition-colors duration-300">{riddle.riddle}</p>
+									<p className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-medium text-foreground leading-relaxed text-balance hover:text-foreground/80 transition-colors duration-300">{riddle.riddle}</p>
 								</div>
 							</div>
 
 							{/* Answer Form - Enhanced integrated input */}
-							<div className="max-w-md mx-auto space-y-6">
+							<div className="max-w-md mx-auto space-y-4 sm:space-y-6">
 								<form ref={formRef} action={formAction} className={`space-y-4 ${showShake ? "shake" : ""}`}>
 									<input type="hidden" name="riddleAnswer" value={riddle.answer} />
 

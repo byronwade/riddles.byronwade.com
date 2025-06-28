@@ -125,7 +125,7 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-	return (
+  return (
 		<html lang="en" suppressHydrationWarning>
 			<head>
 				<meta name="format-detection" content="telephone=no, date=no, email=no, address=no" />
@@ -389,5 +389,5 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 				</ThemeProvider>
 			</body>
 		</html>
-	);
+  );
 }
