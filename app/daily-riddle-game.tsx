@@ -35,26 +35,28 @@ type Achievement = {
 	unlocked: boolean;
 };
 
+/*
 type ShareConfig = {
-	alignment?: "left" | "center" | "right";
-	color?: "social" | "white";
-	enabled?: boolean;
-	font_size?: number;
-	labels?: "counts" | "cta";
-	language?: string;
-	min_count?: number;
-	networks?: ("facebook" | "twitter" | "pinterest" | "email" | "whatsapp" | "reddit")[];
-	padding?: number;
-	radius?: number;
-	show_total?: boolean;
-	show_mobile?: boolean;
-	show_toggle?: boolean;
-	size?: number;
-	top?: number;
-	url?: string;
-	title?: string;
-	description?: string;
+	alignment: "left" | "center" | "right";
+	color: "social" | "white";
+	enabled: boolean;
+	font_size: number;
+	labels: "counts" | "cta";
+	language: string;
+	min_count: number;
+	networks: ("facebook" | "twitter" | "pinterest" | "email" | "whatsapp" | "reddit")[];
+	padding: number;
+	radius: number;
+	show_total: boolean;
+	show_mobile: boolean;
+	show_toggle: boolean;
+	size: number;
+	top: number;
+	url: string;
+	title: string;
+	description: string;
 };
+*/
 
 // Confetti animation
 const createConfetti = () => {
@@ -227,7 +229,7 @@ const checkAchievements = (streak: number, totalSolved: number): Achievement[] =
 	return achievements.filter((a) => a.unlocked);
 };
 
-function MobileShare({ config }: { config: ShareConfig }) {
+function MobileShare({ config }: { config: { [key: string]: any } }) {
 	return (
 		<Dialog>
 			<DialogTrigger asChild>
@@ -242,7 +244,7 @@ function MobileShare({ config }: { config: ShareConfig }) {
 					<DialogDescription>Choose a platform to share your success.</DialogDescription>
 				</DialogHeader>
 				<div className="py-4">
-					<InlineShareButtons {...config} />
+					<InlineShareButtons config={config} />
 				</div>
 			</DialogContent>
 		</Dialog>
@@ -385,12 +387,12 @@ function CompletionState({ streak, totalSolved, nickname, onShowArchive, feedbac
 	const isMobile = useIsMobile();
 
 	const shareUrl = typeof window !== "undefined" ? window.location.href : "";
-	const shareConfig: ShareConfig = {
-		alignment: "center",
-		color: "social",
+	const shareConfig = {
+		alignment: "center" as const,
+		color: "social" as const,
 		enabled: true,
 		font_size: 16,
-		labels: "cta",
+		labels: "cta" as const,
 		language: "en",
 		min_count: 0,
 		networks: ["facebook", "twitter", "whatsapp", "reddit", "email"],
@@ -457,7 +459,7 @@ function CompletionState({ streak, totalSolved, nickname, onShowArchive, feedbac
 
 				{/* Share */}
 				<motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="pt-4 relative z-10">
-					{isMobile ? <MobileShare config={shareConfig} /> : <InlineShareButtons {...shareConfig} />}
+					{isMobile ? <MobileShare config={shareConfig} /> : <InlineShareButtons config={shareConfig} />}
 				</motion.div>
 			</div>
 
@@ -509,12 +511,12 @@ export default function DailyRiddleGame({ initialRiddle, allRiddles }: { initial
 
 	// Share config
 	const shareUrl = typeof window !== "undefined" ? window.location.href : "";
-	const shareConfig: ShareConfig = {
-		alignment: "center",
-		color: "social",
+	const shareConfig = {
+		alignment: "center" as const,
+		color: "social" as const,
 		enabled: true,
 		font_size: 16,
-		labels: "cta",
+		labels: "cta" as const,
 		language: "en",
 		min_count: 0,
 		networks: ["facebook", "twitter", "whatsapp", "reddit", "email"],
@@ -848,7 +850,7 @@ export default function DailyRiddleGame({ initialRiddle, allRiddles }: { initial
 									<DialogTitle>Share this riddle</DialogTitle>
 								</DialogHeader>
 								<div className="py-4">
-									<InlineShareButtons {...shareConfig} />
+									<InlineShareButtons config={shareConfig} />
 								</div>
 							</DialogContent>
 						</Dialog>
