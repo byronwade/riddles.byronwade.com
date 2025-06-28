@@ -32,41 +32,18 @@ export const metadata: Metadata = {
 		userScalable: true,
 	},
 	openGraph: {
-		title: "Daily Riddles - Free Brain Teasers & Puzzles",
-		description: "Challenge your mind with a new riddle every day. Free daily brain teasers, logic puzzles, and mind games. No signup required!",
-		url: "https://riddles.byronwade.com",
-		siteName: "Daily Riddles",
-		locale: "en_US",
 		type: "website",
-		images: [
-			{
-				url: "/og-image.jpg",
-				width: 1200,
-				height: 630,
-				alt: "Daily Riddles - Challenge Your Mind with Free Brain Teasers",
-				type: "image/jpeg",
-			},
-			{
-				url: "/og-image-square.jpg",
-				width: 1080,
-				height: 1080,
-				alt: "Daily Riddles Game - Brain Training Puzzles",
-				type: "image/jpeg",
-			},
-		],
+		locale: "en_US",
+		url: "https://riddles.byronwade.com",
+		title: "Daily Riddles - Free Brain Teasers and Puzzles",
+		description: "Challenge your mind with a new riddle every day. Track your stats, earn achievements, and see if you can maintain your streak!",
+		siteName: "Daily Riddles",
 	},
 	twitter: {
 		card: "summary_large_image",
-		site: "@dailyriddles",
-		creator: "@dailyriddles",
-		title: "Daily Riddles - Free Brain Teasers & Puzzles",
-		description: "Challenge your mind with a new riddle every day. Free daily brain teasers and puzzles. No signup required!",
-		images: [
-			{
-				url: "/og-image.jpg",
-				alt: "Daily Riddles - Challenge Your Mind",
-			},
-		],
+		title: "Daily Riddles - Free Brain Teasers and Puzzles",
+		description: "Challenge your mind with a new riddle every day. Can you solve it?",
+		creator: "@byronwade",
 	},
 	robots: {
 		index: true,
@@ -121,6 +98,10 @@ export const metadata: Metadata = {
 		"DC.language": "en-US",
 		"DC.coverage": "Worldwide",
 		"DC.rights": "© 2024 Daily Riddles. All rights reserved.",
+	},
+	manifest: "/manifest.json",
+	appleWebApp: {
+		// ... existing code ...
 	},
 };
 
