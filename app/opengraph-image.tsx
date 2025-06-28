@@ -13,6 +13,14 @@ export const contentType = "image/png";
 export default async function Image() {
 	const riddle = await getDailyRiddle();
 
+	const getFontSize = (text: string) => {
+		const length = text.length;
+		if (length > 250) return "32px";
+		if (length > 200) return "38px";
+		if (length > 150) return "44px";
+		return "52px";
+	};
+
 	return new ImageResponse(
 		(
 			<div
@@ -57,7 +65,7 @@ export default async function Image() {
 				>
 					<p
 						style={{
-							fontSize: "52px",
+							fontSize: getFontSize(riddle.riddle),
 							textAlign: "center",
 							lineHeight: 1.4,
 							overflowWrap: "break-word",
