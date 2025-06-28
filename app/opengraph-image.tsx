@@ -15,10 +15,11 @@ export default async function Image() {
 
 	const getFontSize = (text: string) => {
 		const length = text.length;
-		if (length > 250) return "32px";
-		if (length > 200) return "38px";
-		if (length > 150) return "44px";
-		return "52px";
+		if (length > 250) return "30px";
+		if (length > 200) return "36px";
+		if (length > 150) return "42px";
+		if (length > 100) return "48px";
+		return "56px";
 	};
 
 	return new ImageResponse(

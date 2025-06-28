@@ -440,7 +440,7 @@ function IntegratedSubmitInput({ value, onChange, disabled, onVoiceInput }: { va
 
 IntegratedSubmitInput.displayName = "IntegratedSubmitInput";
 
-function CompletionState({ streak, totalSolved, nickname, onShowArchive, feedback }: { streak: number; totalSolved: number; nickname: string; onShowArchive: () => void; feedback: string }) {
+function CompletionState({ streak, totalSolved, nickname, onShowArchive, feedback, riddleText }: { streak: number; totalSolved: number; nickname: string; onShowArchive: () => void; feedback: string; riddleText: string }) {
 	const [timeLeft, setTimeLeft] = useState("");
 
 	useEffect(() => {
@@ -479,7 +479,7 @@ function CompletionState({ streak, totalSolved, nickname, onShowArchive, feedbac
 		show_toggle: false,
 		size: 48,
 		url: shareUrl,
-		title: `I solved today's riddle! Can you? My streak is ${streak}!`,
+		title: `I solved today's riddle! Can you?\n\nRiddle:\n${riddleText}`,
 		description: "Challenge your mind with a new riddle every day.",
 	};
 
@@ -602,8 +602,8 @@ export default function DailyRiddleGame({ initialRiddle, allRiddles }: { initial
 		show_toggle: false,
 		size: 48,
 		url: shareUrl,
-		title: `I solved today's riddle! Can you?`,
-		description: `Come try and solve the daily riddle.`,
+		title: `I solved today's riddle! Can you?\n\nRiddle:\n${initialRiddle.riddle}`,
+		description: "Challenge your mind with a new riddle every day.",
 	};
 
 	useEffect(() => {
@@ -895,7 +895,7 @@ export default function DailyRiddleGame({ initialRiddle, allRiddles }: { initial
 					<AnimatePresence mode="wait">
 						{isCorrect ? (
 							<motion.div key="completion">
-								<CompletionState streak={streak} totalSolved={totalSolved} nickname={nickname} onShowArchive={handleShowArchive} feedback={state?.feedback || ""} />
+								<CompletionState streak={streak} totalSolved={totalSolved} nickname={nickname} onShowArchive={handleShowArchive} feedback={state?.feedback || ""} riddleText={initialRiddle.riddle} />
 							</motion.div>
 						) : (
 							<motion.div key="riddle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-8 sm:space-y-12">
