@@ -1,0 +1,18 @@
+/* TEAM */
+Developer: Daily Riddles Team
+Contact: hello [at] riddles.byronwade.com
+Twitter: @dailyriddles
+From: Global
+
+/* THANKS */
+Next.js: https://nextjs.org
+Tailwind CSS: https://tailwindcss.com
+Shadcn/UI: https://ui.shadcn.com
+Vercel: https://vercel.com
+
+/* SITE */
+Last update: 2024/12/19
+Language: English
+Doctype: HTML5
+IDE: Cursor, VS Code
+Technologies: Next.js 15, TypeScript, Tailwind CSS, Bun 
