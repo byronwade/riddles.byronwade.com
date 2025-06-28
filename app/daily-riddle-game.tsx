@@ -228,12 +228,12 @@ const checkAchievements = (streak: number, totalSolved: number): Achievement[] =
 
 function MobileShare({ config }: { config: ShareConfig }) {
 	const handleFacebookShare = () => {
-		const shareText = encodeURIComponent(config.title);
 		const shareUrl = encodeURIComponent(config.url);
+		const shareText = encodeURIComponent(config.title);
 
 		// Try to open Facebook app first, fallback to web
 		const facebookAppUrl = `fb://facewebmodal/f?href=${shareUrl}`;
-		const facebookWebUrl = `https://www.facebook.com/sharer/sharer.php?u=${shareUrl}&quote=${shareText}`;
+		const facebookWebUrl = `https://www.facebook.com/sharer/sharer.php?u=${shareUrl}&quote=${shareText}&hashtag=%23DailyRiddles`;
 
 		// Check if we're on mobile
 		const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -278,7 +278,7 @@ function MobileShare({ config }: { config: ShareConfig }) {
 					Share Your Results
 				</Button>
 			</DialogTrigger>
-			<DialogContent className="sm:max-w-md bg-background border-border">
+			<DialogContent className="sm:max-w-md bg-white dark:bg-gray-900 border-border">
 				<DialogHeader>
 					<DialogTitle className="text-foreground">Share with your friends</DialogTitle>
 					<DialogDescription className="text-muted-foreground">Choose a platform to share your success.</DialogDescription>
@@ -861,7 +861,7 @@ export default function DailyRiddleGame({ initialRiddle, allRiddles }: { initial
 										Share
 									</Button>
 								</DialogTrigger>
-								<DialogContent className="bg-background border-border">
+								<DialogContent className="bg-white dark:bg-gray-900 border-border">
 									<DialogHeader>
 										<DialogTitle className="text-foreground">Share this riddle</DialogTitle>
 										<DialogDescription className="text-muted-foreground">Challenge your friends with today&apos;s riddle!</DialogDescription>
@@ -941,7 +941,7 @@ export default function DailyRiddleGame({ initialRiddle, allRiddles }: { initial
 									<Share2 className="w-4 h-4 mr-2" /> Share
 								</Button>
 							</DialogTrigger>
-							<DialogContent className="bg-background border-border">
+							<DialogContent className="bg-white dark:bg-gray-900 border-border">
 								<DialogHeader>
 									<DialogTitle className="text-foreground">Share this riddle</DialogTitle>
 									<DialogDescription className="text-muted-foreground">Challenge your friends with today&apos;s riddle!</DialogDescription>

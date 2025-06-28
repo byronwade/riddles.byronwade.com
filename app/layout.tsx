@@ -39,12 +39,21 @@ export const metadata: Metadata = {
 		title: "Daily Riddles - Free Brain Teasers and Puzzles",
 		description: "Challenge your mind with a new riddle every day. Track your stats, earn achievements, and see if you can maintain your streak!",
 		siteName: "Daily Riddles",
+		images: [
+			{
+				url: "/opengraph-image",
+				width: 1200,
+				height: 630,
+				alt: "Daily Riddles - Brain Teasers & Puzzles",
+			},
+		],
 	},
 	twitter: {
 		card: "summary_large_image",
 		title: "Daily Riddles - Free Brain Teasers and Puzzles",
 		description: "Challenge your mind with a new riddle every day. Can you solve it?",
 		creator: "@byronwade",
+		images: ["/opengraph-image"],
 	},
 	robots: {
 		index: true,
