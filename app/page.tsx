@@ -1,5 +1,5 @@
 import { getDailyRiddle } from "./actions";
-import { DailyRiddleGame } from "./daily-riddle-game";
+import DailyRiddleGame from "./daily-riddle-game";
 
 export default async function Home() {
 	const riddle = await getDailyRiddle();

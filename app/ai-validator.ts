@@ -8,6 +8,14 @@ export interface AnswerValidation {
 	isCorrect: boolean; // Derived from accuracy score
 }
 
+function extractJson(text: string): string {
+	const match = text.match(/```json\n([\s\S]*?)\n```/);
+	if (match && match[1]) {
+		return match[1];
+	}
+	return text;
+}
+
 export async function validateAnswerWithAI(userAnswer: string, correctAnswer: string, riddleText: string): Promise<AnswerValidation> {
 	try {
 		const prompt = `You are an expert riddle validator. Your job is to determine if a user's answer to a riddle is correct by rating it on clarity and accuracy.
@@ -45,7 +53,8 @@ Respond with ONLY the JSON object, no additional text.`;
 			prompt,
 		});
 
-		const validationResult = JSON.parse(text.trim()) as Omit<AnswerValidation, "isCorrect">;
+		const jsonString = extractJson(text);
+		const validationResult = JSON.parse(jsonString.trim()) as Omit<AnswerValidation, "isCorrect">;
 
 		const finalValidation: AnswerValidation = {
 			...validationResult,

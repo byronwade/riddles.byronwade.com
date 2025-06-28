@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { cn } from "@/lib/utils";
 
 type SubmissionStatus = "correct" | "close" | "incorrect";
 
@@ -183,11 +184,11 @@ const shareResults = (streak: number, totalSolved: number, todaysSolved: boolean
 			.catch(() => {
 				// If share fails or is cancelled, fall back to clipboard
 				navigator.clipboard.writeText(text);
-				toast.success("Results copied to clipboard!", { duration: 2000 });
+				toast.success("Results copied to clipboard!", { duration: 5000 });
 			});
 	} else {
 		navigator.clipboard.writeText(text);
-		toast.success("Results copied to clipboard!", { duration: 2000 });
+		toast.success("Results copied to clipboard!", { duration: 5000 });
 	}
 };
 
@@ -255,6 +256,8 @@ function IntegratedSubmitInput({ value, onChange, disabled, onVoiceInput }: { va
 		</div>
 	);
 }
+
+IntegratedSubmitInput.displayName = "IntegratedSubmitInput";
 
 function CompletionState({ streak, totalSolved }: { streak: number; totalSolved: number }) {
 	const [timeUntilNext, setTimeUntilNext] = useState("");
@@ -329,7 +332,20 @@ function CompletionState({ streak, totalSolved }: { streak: number; totalSolved:
 	);
 }
 
-export function DailyRiddleGame({ initialRiddle }: { initialRiddle: Riddle }) {
+function LoadingOverlay() {
+	const { pending } = useFormStatus();
+	if (!pending) return null;
+	return (
+		<div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50">
+			<div className="flex flex-col items-center gap-4">
+				<div className="w-10 h-10 border-4 border-foreground border-t-transparent rounded-full animate-spin" />
+				<p className="text-lg text-muted-foreground font-semibold">🤖 AI is validating your answer...</p>
+			</div>
+		</div>
+	);
+}
+
+export default function DailyRiddleGame({ initialRiddle }: { initialRiddle: Riddle }) {
 	const [riddle] = useState(initialRiddle);
 	const [answerInput, setAnswerInput] = useState("");
 	const [streak, setStreak] = useState(0);
@@ -392,7 +408,7 @@ export function DailyRiddleGame({ initialRiddle }: { initialRiddle: Riddle }) {
 
 	const handleVoiceInput = (text: string) => {
 		setAnswerInput(text);
-		toast.success(`Voice input: "${text}"`, { duration: 2000 });
+		toast.success(`Voice input: "${text}"`, { duration: 5000 });
 	};
 
 	// Generate AI hint when attempts increase
@@ -420,7 +436,7 @@ export function DailyRiddleGame({ initialRiddle }: { initialRiddle: Riddle }) {
 			createConfetti();
 
 			toast.success(`🎉 ${result.feedback}`, {
-				duration: 3000,
+				duration: 5000,
 				style: {
 					background: "hsl(var(--background))",
 					color: "hsl(var(--foreground))",
@@ -451,7 +467,7 @@ export function DailyRiddleGame({ initialRiddle }: { initialRiddle: Riddle }) {
 			playSound("close");
 			triggerHaptic("medium");
 			toast.info(`💭 ${result.feedback}`, {
-				duration: 3000,
+				duration: 5000,
 				style: {
 					background: "hsl(var(--background))",
 					color: "hsl(var(--foreground))",
@@ -465,7 +481,7 @@ export function DailyRiddleGame({ initialRiddle }: { initialRiddle: Riddle }) {
 			setTimeout(() => setShowShake(false), 500);
 
 			toast.error(`🤔 ${result.feedback}`, {
-				duration: 3000,
+				duration: 5000,
 				style: {
 					background: "hsl(var(--background))",
 					color: "hsl(var(--foreground))",
@@ -556,7 +572,7 @@ export function DailyRiddleGame({ initialRiddle }: { initialRiddle: Riddle }) {
 				</div>
 
 				{/* Main Content */}
-				<div className="space-y-6 sm:space-y-8 lg:space-y-12 max-w-2xl mx-auto">
+				<div className={cn("space-y-6 sm:space-y-8 lg:space-y-12 max-w-2xl mx-auto", showShake && "animate-shake")}>
 					{isCompleted ? (
 						<CompletionState streak={streak} totalSolved={totalSolved} />
 					) : (
@@ -569,14 +585,15 @@ export function DailyRiddleGame({ initialRiddle }: { initialRiddle: Riddle }) {
 							</div>
 
 							{/* Answer Form - Enhanced integrated input */}
-							<div className="max-w-md mx-auto space-y-4 sm:space-y-6">
-								<form ref={formRef} action={formAction} className={`space-y-4 ${showShake ? "shake" : ""}`}>
+							<div className={cn("max-w-md mx-auto space-y-4 sm:space-y-6", showShake && "animate-shake")}>
+								<form action={formAction} ref={formRef} className="w-full max-w-2xl relative">
 									<input type="hidden" name="riddleAnswer" value={riddle.answer} />
 									<input type="hidden" name="riddleText" value={riddle.riddle} />
 
 									<div className="animate-in fade-in-50 slide-in-from-bottom-4 duration-700 delay-200">
 										<IntegratedSubmitInput value={answerInput} onChange={setAnswerInput} disabled={false} onVoiceInput={handleVoiceInput} />
 									</div>
+									<LoadingOverlay />
 								</form>
 
 								{/* Feedback is now handled by toasts, this section can be removed or repurposed */}
