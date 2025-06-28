@@ -133,10 +133,10 @@ function IntegratedSubmitInput({ value, onChange, disabled }: { value: string; o
 
 	return (
 		<div className="relative group">
-			<Input ref={inputRef} name="answer" placeholder="Type your answer..." required value={value} onChange={handleChange} disabled={disabled || pending} className="w-full h-16 px-6 pr-32 text-lg bg-background border-2 border-border/50 rounded-full text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all duration-300" autoComplete="off" autoFocus />
+			<Input ref={inputRef} name="answer" placeholder="Type your answer..." required value={value} onChange={handleChange} disabled={disabled || pending} className="w-full h-12 px-6 pr-24 text-base bg-background border-2 border-border/50 rounded-full text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all duration-300" autoComplete="off" inputMode="text" style={{ fontSize: "16px" }} />
 
-			<Button type="button" onClick={handleButtonClick} disabled={disabled || pending || !value.trim()} className="absolute right-3 top-1/2 -translate-y-1/2 h-11 rounded-full bg-foreground text-background hover:bg-foreground/90 disabled:opacity-50 px-6 flex items-center justify-center text-base font-medium transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] disabled:hover:scale-100">
-				{pending ? <div className="w-4 h-4 border border-background/30 border-t-background rounded-full animate-spin" /> : "Submit"}
+			<Button type="button" onClick={handleButtonClick} disabled={disabled || pending || !value.trim()} className="absolute right-2 top-1/2 -translate-y-1/2 h-8 rounded-full bg-foreground text-background hover:bg-foreground/90 disabled:opacity-50 px-4 flex items-center justify-center text-sm font-medium transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] disabled:hover:scale-100">
+				{pending ? <div className="w-3 h-3 border border-background/30 border-t-background rounded-full animate-spin" /> : "Submit"}
 			</Button>
 		</div>
 	);
@@ -232,7 +232,7 @@ export default function RiddleArchive({ allRiddles, dailyRiddle, onExit }: { all
 							<TooltipTrigger asChild>
 								<div className="text-center cursor-pointer hover:scale-105 transition-transform duration-200 group" onClick={() => !isEditingNickname && setIsEditingNickname(true)}>
 									{isEditingNickname ? (
-										<Input type="text" value={nickname} onChange={handleNicknameChange} onBlur={handleNicknameSave} onKeyDown={handleNicknameKeyDown} className="w-24 h-8 text-center bg-transparent border-b-2" autoFocus />
+										<Input type="text" value={nickname} onChange={handleNicknameChange} onBlur={handleNicknameSave} onKeyDown={handleNicknameKeyDown} className="w-24 h-8 text-center bg-transparent border-b-2" style={{ fontSize: "16px" }} />
 									) : (
 										<>
 											<div className="text-lg sm:text-xl font-bold text-foreground flex items-center gap-1">
