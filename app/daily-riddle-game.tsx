@@ -229,7 +229,7 @@ const checkAchievements = (streak: number, totalSolved: number): Achievement[] =
 	return achievements.filter((a) => a.unlocked);
 };
 
-function MobileShare({ config }: { config: Record<string, any> }) {
+function MobileShare({ config }: { config: { [key: string]: any } }) {
 	return (
 		<Dialog>
 			<DialogTrigger asChild>
