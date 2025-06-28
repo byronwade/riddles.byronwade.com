@@ -13,6 +13,7 @@ type SubmissionStatus = "correct" | "close" | "incorrect";
 
 type FormState = {
 	status: SubmissionStatus;
+	feedback: string;
 } | null;
 
 type Achievement = {
@@ -418,8 +419,8 @@ export function DailyRiddleGame({ initialRiddle }: { initialRiddle: Riddle }) {
 			triggerHaptic("medium");
 			createConfetti();
 
-			toast.success("🎉 Correct! Well done!", {
-				duration: 2000,
+			toast.success(`🎉 ${result.feedback}`, {
+				duration: 3000,
 				style: {
 					background: "hsl(var(--background))",
 					color: "hsl(var(--foreground))",
@@ -449,8 +450,8 @@ export function DailyRiddleGame({ initialRiddle }: { initialRiddle: Riddle }) {
 		} else if (result.status === "close") {
 			playSound("close");
 			triggerHaptic("medium");
-			toast.info("💭 So close! You&apos;re on the right track.", {
-				duration: 2000,
+			toast.info(`💭 ${result.feedback}`, {
+				duration: 3000,
 				style: {
 					background: "hsl(var(--background))",
 					color: "hsl(var(--foreground))",
@@ -463,8 +464,8 @@ export function DailyRiddleGame({ initialRiddle }: { initialRiddle: Riddle }) {
 			setShowShake(true);
 			setTimeout(() => setShowShake(false), 500);
 
-			toast.error("🤔 Not quite. Try again!", {
-				duration: 2000,
+			toast.error(`🤔 ${result.feedback}`, {
+				duration: 3000,
 				style: {
 					background: "hsl(var(--background))",
 					color: "hsl(var(--foreground))",
@@ -578,22 +579,10 @@ export function DailyRiddleGame({ initialRiddle }: { initialRiddle: Riddle }) {
 									</div>
 								</form>
 
-								{/* Feedback - Enhanced with better animations */}
-								{state?.status === "close" && (
-									<div className="text-center py-3 animate-in fade-in-50 slide-in-from-bottom-2 duration-300">
-										<p className="text-amber-600 dark:text-amber-400 text-sm font-medium">💭 So close! You&apos;re on the right track.</p>
-									</div>
-								)}
-
-								{state?.status === "incorrect" && (
-									<div className="text-center py-3 animate-in fade-in-50 slide-in-from-bottom-2 duration-300">
-										<p className="text-red-600 dark:text-red-400 text-sm font-medium">🤔 Not quite right. Give it another try!</p>
-									</div>
-								)}
-
-								{state?.status === "correct" && !isCompleted && (
-									<div className="text-center py-3 animate-in fade-in-50 slide-in-from-bottom-2 duration-300">
-										<p className="text-green-600 dark:text-green-400 text-sm font-medium">🎉 Excellent! Well done!</p>
+								{/* Feedback is now handled by toasts, this section can be removed or repurposed */}
+								{state?.feedback && (
+									<div className="sr-only" aria-live="polite">
+										{state.feedback}
 									</div>
 								)}
 							</div>
