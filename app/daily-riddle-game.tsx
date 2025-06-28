@@ -8,9 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/lib/utils";
-import { StickyShareButtons, InlineShareButtons, StickyShareButtonsConfig } from "sharethis-reactjs";
+import { StickyShareButtons, InlineShareButtons } from "sharethis-reactjs";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Share2, Pencil, Mic, ArrowRight, Trophy, Star, Gem, Crown, Zap, Flame, Target, XCircle, Lightbulb, CheckCircle, Info, RotateCcw, Award } from "lucide-react";
+import { Share2, Pencil, Mic, Trophy, Star, Gem, Crown, Zap, Flame, Target, XCircle, Lightbulb, CheckCircle, Info, RotateCcw, Award } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { motion, AnimatePresence } from "framer-motion";
 import RiddleArchive from "./riddle-archive";
@@ -35,6 +35,7 @@ type Achievement = {
 	unlocked: boolean;
 };
 
+/*
 type ShareConfig = {
 	alignment: "left" | "center" | "right";
 	color: "social" | "white";
@@ -55,6 +56,7 @@ type ShareConfig = {
 	title: string;
 	description: string;
 };
+*/
 
 // Confetti animation
 const createConfetti = () => {
@@ -227,7 +229,7 @@ const checkAchievements = (streak: number, totalSolved: number): Achievement[] =
 	return achievements.filter((a) => a.unlocked);
 };
 
-function MobileShare({ config }: { config: ShareConfig }) {
+function MobileShare({ config }: { config: Record<string, any> }) {
 	return (
 		<Dialog>
 			<DialogTrigger asChild>
@@ -242,7 +244,6 @@ function MobileShare({ config }: { config: ShareConfig }) {
 					<DialogDescription>Choose a platform to share your success.</DialogDescription>
 				</DialogHeader>
 				<div className="py-4">
-					{/* eslint-disable-next-line @typescript-eslint/no-unsafe-assignment */}
 					<InlineShareButtons config={config} />
 				</div>
 			</DialogContent>
@@ -386,27 +387,25 @@ function CompletionState({ streak, totalSolved, nickname, onShowArchive, feedbac
 	const isMobile = useIsMobile();
 
 	const shareUrl = typeof window !== "undefined" ? window.location.href : "";
-	const shareConfig: StickyShareButtonsConfig = {
-		config: {
-			alignment: "center",
-			color: "social",
-			enabled: true,
-			font_size: 16,
-			labels: "cta",
-			language: "en",
-			min_count: 0,
-			networks: ["facebook", "twitter", "whatsapp", "reddit", "email"],
-			padding: 12,
-			radius: 8,
-			show_total: false,
-			show_mobile: true,
-			show_toggle: false,
-			size: 48,
-			top: 150,
-			url: shareUrl,
-			title: `I solved today's riddle! Can you? My streak is ${streak}!`,
-			description: "Challenge your mind with a new riddle every day.",
-		},
+	const shareConfig = {
+		alignment: "center" as const,
+		color: "social" as const,
+		enabled: true,
+		font_size: 16,
+		labels: "cta" as const,
+		language: "en",
+		min_count: 0,
+		networks: ["facebook", "twitter", "whatsapp", "reddit", "email"],
+		padding: 12,
+		radius: 8,
+		show_total: false,
+		show_mobile: true,
+		show_toggle: false,
+		size: 48,
+		top: 150,
+		url: shareUrl,
+		title: `I solved today's riddle! Can you? My streak is ${streak}!`,
+		description: "Challenge your mind with a new riddle every day.",
 	};
 
 	return (
@@ -460,7 +459,7 @@ function CompletionState({ streak, totalSolved, nickname, onShowArchive, feedbac
 
 				{/* Share */}
 				<motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="pt-4 relative z-10">
-					{isMobile ? <MobileShare config={shareConfig.config} /> : <InlineShareButtons config={shareConfig.config} />}
+					{isMobile ? <MobileShare config={shareConfig} /> : <InlineShareButtons config={shareConfig} />}
 				</motion.div>
 			</div>
 
@@ -512,27 +511,25 @@ export default function DailyRiddleGame({ initialRiddle, allRiddles }: { initial
 
 	// Share config
 	const shareUrl = typeof window !== "undefined" ? window.location.href : "";
-	const shareConfig: StickyShareButtonsConfig = {
-		config: {
-			alignment: "center",
-			color: "social",
-			enabled: true,
-			font_size: 16,
-			labels: "cta",
-			language: "en",
-			min_count: 0,
-			networks: ["facebook", "twitter", "whatsapp", "reddit", "email"],
-			padding: 12,
-			radius: 8,
-			show_total: false,
-			show_mobile: true,
-			show_toggle: false,
-			size: 48,
-			top: 150,
-			url: shareUrl,
-			title: `I solved today's riddle! Can you?`,
-			description: `Come try and solve the daily riddle.`,
-		},
+	const shareConfig = {
+		alignment: "center" as const,
+		color: "social" as const,
+		enabled: true,
+		font_size: 16,
+		labels: "cta" as const,
+		language: "en",
+		min_count: 0,
+		networks: ["facebook", "twitter", "whatsapp", "reddit", "email"],
+		padding: 12,
+		radius: 8,
+		show_total: false,
+		show_mobile: true,
+		show_toggle: false,
+		size: 48,
+		top: 150,
+		url: shareUrl,
+		title: `I solved today's riddle! Can you?`,
+		description: `Come try and solve the daily riddle.`,
 	};
 
 	useEffect(() => {
@@ -676,7 +673,6 @@ export default function DailyRiddleGame({ initialRiddle, allRiddles }: { initial
 	};
 
 	const isMobile = useIsMobile();
-	const currentAchievements = checkAchievements(streak, totalSolved);
 
 	if (isLoading) {
 		return (
@@ -697,7 +693,7 @@ export default function DailyRiddleGame({ initialRiddle, allRiddles }: { initial
 	return (
 		<TooltipProvider>
 			<div className="relative min-h-screen">
-				{!isCorrect && !isMobile && <StickyShareButtons {...shareConfig.config} />}
+				{!isCorrect && !isMobile && <StickyShareButtons {...shareConfig} />}
 
 				{/* Top Bar with Stats and Theme Toggle */}
 				<div className="flex items-start justify-between mb-8 sm:mb-12 lg:mb-16">
@@ -763,7 +759,7 @@ export default function DailyRiddleGame({ initialRiddle, allRiddles }: { initial
 								</div>
 							</TooltipTrigger>
 							<TooltipContent>
-								<p>Your attempts for today's riddle.</p>
+								<p>Your attempts for today&apos;s riddle.</p>
 							</TooltipContent>
 						</Tooltip>
 
@@ -854,8 +850,7 @@ export default function DailyRiddleGame({ initialRiddle, allRiddles }: { initial
 									<DialogTitle>Share this riddle</DialogTitle>
 								</DialogHeader>
 								<div className="py-4">
-									{/* eslint-disable-next-line @typescript-eslint/no-unsafe-assignment */}
-									<InlineShareButtons config={shareConfig.config} />
+									<InlineShareButtons config={shareConfig} />
 								</div>
 							</DialogContent>
 						</Dialog>

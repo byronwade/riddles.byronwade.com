@@ -41,7 +41,7 @@ export default async function Image() {
 						<path d="M12 16a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" />
 						<path d="M12 12h.01" />
 					</svg>
-					<span style={{ marginLeft: "16px", fontSize: "30px", fontWeight: 600, color: "#d4d4d8" }}>Today's Riddle</span>
+					<span style={{ marginLeft: "16px", fontSize: "30px", fontWeight: 600, color: "#d4d4d8" }}>Today&apos;s Riddle</span>
 				</div>
 
 				{/* Riddle Content Area */}
