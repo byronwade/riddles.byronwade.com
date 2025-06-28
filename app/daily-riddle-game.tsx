@@ -99,18 +99,18 @@ const playSound = (type: "correct" | "incorrect" | "close" | "click" | "type") =
 const useVoiceInput = (onResult: (text: string) => void) => {
 	const [isListening, setIsListening] = useState(false);
 	const [isSupported, setIsSupported] = useState(false);
-	const recognitionRef = useRef<any>(null);
+	const recognitionRef = useRef<SpeechRecognition | null>(null);
 
 	useEffect(() => {
-		const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-		if (SpeechRecognition) {
+		const SpeechRecognitionClass = window.SpeechRecognition || window.webkitSpeechRecognition;
+		if (SpeechRecognitionClass) {
 			setIsSupported(true);
-			recognitionRef.current = new SpeechRecognition();
+			recognitionRef.current = new SpeechRecognitionClass();
 			recognitionRef.current.continuous = false;
 			recognitionRef.current.interimResults = false;
 			recognitionRef.current.lang = "en-US";
 
-			recognitionRef.current.onresult = (event: any) => {
+			recognitionRef.current.onresult = (event: SpeechRecognitionEvent) => {
 				const transcript = event.results[0][0].transcript;
 				onResult(transcript);
 				setIsListening(false);
