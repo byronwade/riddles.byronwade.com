@@ -3,7 +3,7 @@
 import { useState, useActionState, useEffect, useRef } from "react";
 import { useFormStatus } from "react-dom";
 import { toast } from "sonner";
-import { submitAnswer, Riddle } from "./actions";
+import { submitAnswer, Riddle, getAIHint } from "./actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -139,11 +139,11 @@ const useVoiceInput = (onResult: (text: string) => void) => {
 // Progressive hints
 const getProgressiveHint = (attempts: number): string | null => {
 	if (attempts < 2) return null;
-
-	const hints = ["💡 Think about the key words in the riddle. Sometimes the answer is simpler than you expect!", "🔍 Consider the literal meaning of each word. What might seem impossible could have a simple explanation.", "🌟 Focus on the setting and conditions described. What detail might change everything?"];
-
-	const hintIndex = Math.min(Math.floor((attempts - 2) / 2), hints.length - 1);
-	return hints[hintIndex];
+	if (attempts === 2) return "💡 Think about the key words in the riddle...";
+	if (attempts === 3) return "🤔 Consider what the riddle is really asking about...";
+	if (attempts === 4) return "🔍 Look for wordplay or double meanings...";
+	if (attempts >= 5) return "💭 Try breaking down the riddle into parts...";
+	return null;
 };
 
 // Achievement system
@@ -337,6 +337,8 @@ export function DailyRiddleGame({ initialRiddle }: { initialRiddle: Riddle }) {
 	const [mounted, setMounted] = useState(false);
 	const [isCompleted, setIsCompleted] = useState(false);
 	const [showShake, setShowShake] = useState(false);
+	const [aiHint, setAiHint] = useState<string | null>(null);
+	const [isLoadingHint, setIsLoadingHint] = useState(false);
 	const formRef = useRef<HTMLFormElement>(null);
 
 	// Add CSS animations
@@ -392,17 +394,32 @@ export function DailyRiddleGame({ initialRiddle }: { initialRiddle: Riddle }) {
 		toast.success(`Voice input: "${text}"`, { duration: 2000 });
 	};
 
+	// Generate AI hint when attempts increase
+	useEffect(() => {
+		if (attempts >= 3 && !aiHint && !isLoadingHint) {
+			setIsLoadingHint(true);
+			getAIHint(riddle.riddle, riddle.answer, attempts)
+				.then((hint) => {
+					setAiHint(hint);
+					setIsLoadingHint(false);
+				})
+				.catch(() => {
+					setIsLoadingHint(false);
+				});
+		}
+	}, [attempts, aiHint, isLoadingHint, riddle.riddle, riddle.answer]);
+
 	const [state, formAction] = useActionState(async (previousState: FormState, formData: FormData) => {
 		const result = await submitAnswer(formData);
 		setAttempts((prev) => prev + 1);
 
 		if (result.status === "correct") {
 			playSound("correct");
-			triggerHaptic("heavy");
+			triggerHaptic("medium");
 			createConfetti();
 
-			toast.success("🎉 Correct! Well done.", {
-				duration: 3000,
+			toast.success("🎉 Correct! Well done!", {
+				duration: 2000,
 				style: {
 					background: "hsl(var(--background))",
 					color: "hsl(var(--foreground))",
@@ -418,6 +435,7 @@ export function DailyRiddleGame({ initialRiddle }: { initialRiddle: Riddle }) {
 			setTotalSolved(newTotal);
 			setAnswerInput("");
 			setAttempts(0);
+			setAiHint(null);
 
 			if (typeof window !== "undefined") {
 				localStorage.setItem("riddle-streak", newStreak.toString());
@@ -431,7 +449,7 @@ export function DailyRiddleGame({ initialRiddle }: { initialRiddle: Riddle }) {
 		} else if (result.status === "close") {
 			playSound("close");
 			triggerHaptic("medium");
-			toast.info("💭 So close! Check your spelling.", {
+			toast.info("💭 So close! You&apos;re on the right track.", {
 				duration: 2000,
 				style: {
 					background: "hsl(var(--background))",
@@ -553,6 +571,7 @@ export function DailyRiddleGame({ initialRiddle }: { initialRiddle: Riddle }) {
 							<div className="max-w-md mx-auto space-y-4 sm:space-y-6">
 								<form ref={formRef} action={formAction} className={`space-y-4 ${showShake ? "shake" : ""}`}>
 									<input type="hidden" name="riddleAnswer" value={riddle.answer} />
+									<input type="hidden" name="riddleText" value={riddle.riddle} />
 
 									<div className="animate-in fade-in-50 slide-in-from-bottom-4 duration-700 delay-200">
 										<IntegratedSubmitInput value={answerInput} onChange={setAnswerInput} disabled={false} onVoiceInput={handleVoiceInput} />
@@ -562,7 +581,7 @@ export function DailyRiddleGame({ initialRiddle }: { initialRiddle: Riddle }) {
 								{/* Feedback - Enhanced with better animations */}
 								{state?.status === "close" && (
 									<div className="text-center py-3 animate-in fade-in-50 slide-in-from-bottom-2 duration-300">
-										<p className="text-amber-600 dark:text-amber-400 text-sm font-medium">💭 So close! Check your spelling and try again.</p>
+										<p className="text-amber-600 dark:text-amber-400 text-sm font-medium">💭 So close! You&apos;re on the right track.</p>
 									</div>
 								)}
 
@@ -580,10 +599,17 @@ export function DailyRiddleGame({ initialRiddle }: { initialRiddle: Riddle }) {
 							</div>
 
 							{/* Progressive Hints */}
-							{currentHint && (
+							{(currentHint || aiHint || isLoadingHint) && (
 								<div className="text-center max-w-md mx-auto animate-in fade-in-50 slide-in-from-bottom-4 duration-500">
 									<div className="py-4 px-6 bg-muted/30 rounded-lg border border-border/50 hover:bg-muted/40 transition-colors duration-300">
-										<p className="text-sm text-muted-foreground">{currentHint}</p>
+										{isLoadingHint ? (
+											<div className="flex items-center justify-center gap-2">
+												<div className="w-4 h-4 border-2 border-muted-foreground/30 border-t-muted-foreground rounded-full animate-spin" />
+												<p className="text-sm text-muted-foreground">🤖 AI is thinking of a hint...</p>
+											</div>
+										) : (
+											<p className="text-sm text-muted-foreground">{aiHint ? `🤖 ${aiHint}` : currentHint}</p>
+										)}
 									</div>
 								</div>
 							)}

@@ -3,6 +3,7 @@
 import "server-only";
 import levenshtein from "fast-levenshtein";
 import riddles from "../lib/riddles.json";
+import { validateAnswerWithAI, getHintWithAI } from "./ai-validator";
 
 export type Riddle = {
 	riddle: string;
@@ -93,6 +94,7 @@ function getSynonyms(word: string): string[] {
 export async function submitAnswer(formData: FormData): Promise<{ status: SubmissionStatus }> {
 	const userAnswer = formData.get("answer") as string;
 	const correctAnswer = formData.get("riddleAnswer") as string;
+	const riddleText = formData.get("riddleText") as string;
 
 	if (!userAnswer || !correctAnswer) {
 		return { status: "incorrect" };
@@ -139,9 +141,51 @@ export async function submitAnswer(formData: FormData): Promise<{ status: Submis
 		return { status: "correct" };
 	}
 
+	// If basic validation shows it's close, use AI for more intelligent validation
 	if (minDistance <= threshold) {
-		return { status: "close" };
+		try {
+			const aiValidation = await validateAnswerWithAI(userAnswer, correctAnswer, riddleText);
+
+			if (aiValidation.isCorrect) {
+				return { status: "correct" };
+			}
+
+			// If AI says it's close, return close status
+			if (aiValidation.confidence === "medium" || aiValidation.confidence === "high") {
+				return { status: "close" };
+			}
+		} catch (error) {
+			console.error("AI validation failed, falling back to basic validation:", error);
+			// Fall back to basic validation if AI fails
+			return { status: "close" };
+		}
+	}
+
+	// For answers that are clearly wrong, still try AI validation for edge cases
+	if (minDistance > threshold && minDistance <= threshold + 2) {
+		try {
+			const aiValidation = await validateAnswerWithAI(userAnswer, correctAnswer, riddleText);
+
+			if (aiValidation.isCorrect) {
+				return { status: "correct" };
+			}
+
+			if (aiValidation.confidence === "medium" || aiValidation.confidence === "high") {
+				return { status: "close" };
+			}
+		} catch (error) {
+			console.error("AI validation failed for edge case:", error);
+		}
 	}
 
 	return { status: "incorrect" };
+}
+
+export async function getAIHint(riddleText: string, correctAnswer: string, attempts: number): Promise<string> {
+	try {
+		return await getHintWithAI(riddleText, correctAnswer, attempts);
+	} catch (error) {
+		console.error("AI hint generation failed:", error);
+		return "Think about the key words in the riddle...";
+	}
 }
