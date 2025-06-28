@@ -92,7 +92,7 @@ export async function getAIResponses(userAnswer: string, correctAnswer: string, 
 	}
 }
 
-export async function checkPracticeRiddle(formData: FormData): Promise<{ status: SubmissionStatus; feedback: string }> {
+export async function checkPracticeRiddle(prevState: unknown, formData: FormData): Promise<{ status: SubmissionStatus; feedback: string }> {
 	const userAnswer = formData.get("answer") as string;
 	const riddleText = formData.get("riddleText") as string;
 

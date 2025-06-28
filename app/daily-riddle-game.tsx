@@ -35,7 +35,6 @@ type Achievement = {
 	unlocked: boolean;
 };
 
-/*
 type ShareConfig = {
 	alignment: "left" | "center" | "right";
 	color: "social" | "white";
@@ -56,7 +55,6 @@ type ShareConfig = {
 	title: string;
 	description: string;
 };
-*/
 
 // Confetti animation
 const createConfetti = () => {
@@ -229,7 +227,7 @@ const checkAchievements = (streak: number, totalSolved: number): Achievement[] =
 	return achievements.filter((a) => a.unlocked);
 };
 
-function MobileShare({ config }: { config: { [key: string]: any } }) {
+function MobileShare({ config }: { config: ShareConfig }) {
 	return (
 		<Dialog>
 			<DialogTrigger asChild>
@@ -387,12 +385,12 @@ function CompletionState({ streak, totalSolved, nickname, onShowArchive, feedbac
 	const isMobile = useIsMobile();
 
 	const shareUrl = typeof window !== "undefined" ? window.location.href : "";
-	const shareConfig = {
-		alignment: "center" as const,
-		color: "social" as const,
+	const shareConfig: ShareConfig = {
+		alignment: "center",
+		color: "social",
 		enabled: true,
 		font_size: 16,
-		labels: "cta" as const,
+		labels: "cta",
 		language: "en",
 		min_count: 0,
 		networks: ["facebook", "twitter", "whatsapp", "reddit", "email"],
@@ -511,12 +509,12 @@ export default function DailyRiddleGame({ initialRiddle, allRiddles }: { initial
 
 	// Share config
 	const shareUrl = typeof window !== "undefined" ? window.location.href : "";
-	const shareConfig = {
-		alignment: "center" as const,
-		color: "social" as const,
+	const shareConfig: ShareConfig = {
+		alignment: "center",
+		color: "social",
 		enabled: true,
 		font_size: 16,
-		labels: "cta" as const,
+		labels: "cta",
 		language: "en",
 		min_count: 0,
 		networks: ["facebook", "twitter", "whatsapp", "reddit", "email"],
@@ -693,7 +691,7 @@ export default function DailyRiddleGame({ initialRiddle, allRiddles }: { initial
 	return (
 		<TooltipProvider>
 			<div className="relative min-h-screen">
-				{!isCorrect && !isMobile && <StickyShareButtons {...shareConfig} />}
+				{!isCorrect && !isMobile && <StickyShareButtons config={shareConfig} />}
 
 				{/* Top Bar with Stats and Theme Toggle */}
 				<div className="flex items-start justify-between mb-8 sm:mb-12 lg:mb-16">

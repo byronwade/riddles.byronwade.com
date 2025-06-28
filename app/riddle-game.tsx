@@ -52,7 +52,7 @@ export function RiddleGame({ initialRiddle }: { initialRiddle: Riddle }) {
 	}, []);
 
 	const [state, formAction] = useActionState(async (previousState: FormState, formData: FormData) => {
-		const result = await submitAnswer(formData);
+		const result = await submitAnswer(previousState, formData);
 
 		if (result.status === "correct") {
 			toast.success("Correct! Well done.");
