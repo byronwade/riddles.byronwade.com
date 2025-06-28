@@ -1,26 +1,65 @@
 {
-  "name": "Riddle Me This - Free Online Riddle Game",
-  "short_name": "Riddle Me This",
-  "description": "Challenge your mind with thousands of free riddles, puzzles, and brain teasers. No registration required!",
+  "name": "Daily Riddles - Free Brain Teasers & Puzzles",
+  "short_name": "Daily Riddles",
+  "description": "Challenge your mind with a new riddle every day. Free daily brain teasers, logic puzzles, and mind games. No signup required!",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#0a0a0a",
-  "theme_color": "#ffffff",
   "orientation": "portrait-primary",
+  "background_color": "#0a0a0a",
+  "theme_color": "#2563eb",
   "categories": ["games", "education", "entertainment"],
   "lang": "en-US",
+  "dir": "ltr",
+  "prefer_related_applications": false,
   "icons": [
+    {
+      "src": "/icon-72x72.png",
+      "sizes": "72x72",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-96x96.png",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-128x128.png",
+      "sizes": "128x128",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-144x144.png",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-152x152.png",
+      "sizes": "152x152",
+      "type": "image/png",
+      "purpose": "any"
+    },
     {
       "src": "/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "maskable any"
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-384x384.png",
+      "sizes": "384x384",
+      "type": "image/png",
+      "purpose": "any"
     },
     {
       "src": "/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "maskable any"
+      "purpose": "any maskable"
     }
   ],
   "screenshots": [
@@ -28,13 +67,48 @@
       "src": "/screenshot-wide.png",
       "sizes": "1280x720",
       "type": "image/png",
-      "form_factor": "wide"
+      "form_factor": "wide",
+      "label": "Daily Riddles game on desktop"
     },
     {
       "src": "/screenshot-narrow.png",
       "sizes": "750x1334",
       "type": "image/png",
-      "form_factor": "narrow"
+      "form_factor": "narrow",
+      "label": "Daily Riddles game on mobile"
     }
-  ]
+  ],
+  "shortcuts": [
+    {
+      "name": "Play Today's Riddle",
+      "short_name": "Play",
+      "description": "Start solving today's brain teaser",
+      "url": "/#game",
+      "icons": [
+        {
+          "src": "/shortcut-play.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "View Achievements",
+      "short_name": "Achievements",
+      "description": "Check your solving streaks and badges",
+      "url": "/#achievements",
+      "icons": [
+        {
+          "src": "/shortcut-achievements.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    }
+  ],
+  "related_applications": [],
+  "iarc_rating_id": "",
+  "edge_side_panel": {
+    "preferred_width": 400
+  }
 } 
