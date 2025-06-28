@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/lib/utils";
-import { StickyShareButtons, InlineShareButtons } from "sharethis-reactjs";
+import { InlineShareButtons } from "sharethis-reactjs";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Share2, Pencil, Mic, Trophy, Star, Gem, Crown, Zap, Flame, Target, XCircle, Lightbulb, CheckCircle, Info, RotateCcw, Award } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -50,7 +50,6 @@ type ShareConfig = {
 	show_mobile: boolean;
 	show_toggle: boolean;
 	size: number;
-	top: number;
 	url: string;
 	title: string;
 	description: string;
@@ -400,7 +399,6 @@ function CompletionState({ streak, totalSolved, nickname, onShowArchive, feedbac
 		show_mobile: true,
 		show_toggle: false,
 		size: 48,
-		top: 150,
 		url: shareUrl,
 		title: `I solved today's riddle! Can you? My streak is ${streak}!`,
 		description: "Challenge your mind with a new riddle every day.",
@@ -524,7 +522,6 @@ export default function DailyRiddleGame({ initialRiddle, allRiddles }: { initial
 		show_mobile: true,
 		show_toggle: false,
 		size: 48,
-		top: 150,
 		url: shareUrl,
 		title: `I solved today's riddle! Can you?`,
 		description: `Come try and solve the daily riddle.`,
@@ -542,7 +539,7 @@ export default function DailyRiddleGame({ initialRiddle, allRiddles }: { initial
 				const today = new Date().toISOString().split("T")[0];
 				const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
 
-				const currentStreak = parseInt(localStorage.getItem("riddle-streak") || "0");
+				const currentStreak = parseInt(localStorage.getItem("riddle-streak") || "0", 10);
 				const savedAttemptsDate = localStorage.getItem("riddle-attempts-date");
 				if (savedLastSolved === today) {
 					setIsCorrect(true);
@@ -555,7 +552,7 @@ export default function DailyRiddleGame({ initialRiddle, allRiddles }: { initial
 				}
 
 				if (savedAttemptsDate === today) {
-					setAttempts(parseInt(localStorage.getItem("riddle-attempts") || "0"));
+					setAttempts(parseInt(localStorage.getItem("riddle-attempts") || "0", 10));
 				} else {
 					localStorage.setItem("riddle-attempts", "0");
 					localStorage.setItem("riddle-attempts-date", today);
@@ -563,7 +560,7 @@ export default function DailyRiddleGame({ initialRiddle, allRiddles }: { initial
 				}
 
 				setLastSolvedDate(savedLastSolved);
-				setTotalSolved(parseInt(localStorage.getItem("riddle-total") || "0"));
+				setTotalSolved(parseInt(localStorage.getItem("riddle-total") || "0", 10));
 
 				// Sound context & animations
 				initAudioContext();
@@ -596,9 +593,11 @@ export default function DailyRiddleGame({ initialRiddle, allRiddles }: { initial
 
 	useEffect(() => {
 		if (state) {
-			const newAttempts = attempts + 1;
-			setAttempts(newAttempts);
-			localStorage.setItem("riddle-attempts", newAttempts.toString());
+			setAttempts((prev) => {
+				const newAttempts = prev + 1;
+				localStorage.setItem("riddle-attempts", newAttempts.toString());
+				return newAttempts;
+			});
 
 			setFeedback({ message: state.feedback, type: state.status });
 			if (state.status === "correct") {
@@ -607,24 +606,27 @@ export default function DailyRiddleGame({ initialRiddle, allRiddles }: { initial
 
 				const today = new Date().toISOString().split("T")[0];
 				if (lastSolvedDate !== today) {
-					const oldStreak = streak;
-					const oldTotal = totalSolved;
+					const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
 
-					const newStreak = lastSolvedDate === new Date(Date.now() - 86400000).toISOString().split("T")[0] ? streak + 1 : 1;
-					const newTotal = totalSolved + 1;
+					setStreak((prevStreak) => {
+						setTotalSolved((prevTotal) => {
+							const oldAchievements = checkAchievements(prevStreak, prevTotal);
+							const newStreak = lastSolvedDate === yesterday ? prevStreak + 1 : 1;
+							const newTotal = prevTotal + 1;
+							const newAchievements = checkAchievements(newStreak, newTotal);
+							const unlocked = newAchievements.filter((a) => !oldAchievements.some((oa) => oa.id === a.id));
+							setNewlyUnlockedAchievements(unlocked);
 
-					const oldAchievements = checkAchievements(oldStreak, oldTotal);
-					const newAchievements = checkAchievements(newStreak, newTotal);
-					const unlocked = newAchievements.filter((a) => !oldAchievements.some((oa) => oa.id === a.id));
-					setNewlyUnlockedAchievements(unlocked);
+							localStorage.setItem("riddle-streak", newStreak.toString());
+							localStorage.setItem("riddle-total", newTotal.toString());
+							localStorage.setItem("riddle-last-solved", today);
 
-					setStreak(newStreak);
-					setTotalSolved(newTotal);
+							return newTotal;
+						});
+						return lastSolvedDate === yesterday ? prevStreak + 1 : 1;
+					});
+
 					setLastSolvedDate(today);
-
-					localStorage.setItem("riddle-streak", newStreak.toString());
-					localStorage.setItem("riddle-total", newTotal.toString());
-					localStorage.setItem("riddle-last-solved", today);
 				}
 				setTimeout(() => setIsCorrect(true), 500); // Delay for feedback visibility
 				createConfetti();
@@ -637,7 +639,7 @@ export default function DailyRiddleGame({ initialRiddle, allRiddles }: { initial
 				triggerHaptic("heavy");
 			}
 		}
-	}, [state, lastSolvedDate, streak, totalSolved, attempts]);
+	}, [state, lastSolvedDate || ""]);
 
 	const handleNicknameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		setNickname(e.target.value);
@@ -691,8 +693,6 @@ export default function DailyRiddleGame({ initialRiddle, allRiddles }: { initial
 	return (
 		<TooltipProvider>
 			<div className="relative min-h-screen">
-				{!isCorrect && !isMobile && <StickyShareButtons config={shareConfig} />}
-
 				{/* Top Bar with Stats and Theme Toggle */}
 				<div className="flex items-start justify-between mb-8 sm:mb-12 lg:mb-16">
 					{/* Stats */}
@@ -774,6 +774,25 @@ export default function DailyRiddleGame({ initialRiddle, allRiddles }: { initial
 
 					{/* Controls */}
 					<div className="flex items-center gap-2">
+						{!isCorrect && !isMobile && (
+							<Dialog>
+								<DialogTrigger asChild>
+									<Button variant="outline" size="sm">
+										<Share2 className="w-4 h-4 mr-2" />
+										Share
+									</Button>
+								</DialogTrigger>
+								<DialogContent>
+									<DialogHeader>
+										<DialogTitle>Share this riddle</DialogTitle>
+										<DialogDescription>Challenge your friends with today&apos;s riddle!</DialogDescription>
+									</DialogHeader>
+									<div className="py-4">
+										<InlineShareButtons config={shareConfig} />
+									</div>
+								</DialogContent>
+							</Dialog>
+						)}
 						<ThemeToggle />
 					</div>
 				</div>
