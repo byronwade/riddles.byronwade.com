@@ -2,15 +2,25 @@
 
 import { useState, useActionState, useEffect, useRef } from "react";
 import { useFormStatus } from "react-dom";
-import { toast } from "sonner";
-import { submitAnswer, Riddle, getAIHint } from "./actions";
+import { submitAnswer, Riddle } from "./actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/lib/utils";
+import { StickyShareButtons, InlineShareButtons, StickyShareButtonsConfig } from "sharethis-reactjs";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { Share2, Pencil, Mic, ArrowRight, Trophy, Star, Gem, Crown, Zap, Flame, Target, XCircle, Lightbulb, CheckCircle, Info, RotateCcw, Award } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { motion, AnimatePresence } from "framer-motion";
+import RiddleArchive from "./riddle-archive";
 
-type SubmissionStatus = "correct" | "close" | "incorrect";
+type SubmissionStatus = "correct" | "close" | "incorrect" | "info";
+
+type Feedback = {
+	message: string;
+	type: SubmissionStatus;
+} | null;
 
 type FormState = {
 	status: SubmissionStatus;
@@ -25,29 +35,70 @@ type Achievement = {
 	unlocked: boolean;
 };
 
+type ShareConfig = {
+	alignment: "left" | "center" | "right";
+	color: "social" | "white";
+	enabled: boolean;
+	font_size: number;
+	labels: "counts" | "cta";
+	language: string;
+	min_count: number;
+	networks: ("facebook" | "twitter" | "pinterest" | "email" | "whatsapp" | "reddit")[];
+	padding: number;
+	radius: number;
+	show_total: boolean;
+	show_mobile: boolean;
+	show_toggle: boolean;
+	size: number;
+	top: number;
+	url: string;
+	title: string;
+	description: string;
+};
+
 // Confetti animation
 const createConfetti = () => {
-	const colors = ["#ff0000", "#00ff00", "#0000ff", "#ffff00", "#ff00ff", "#00ffff"];
-	const confettiCount = 50;
+	const confettiCount = 100;
+	const confettiContainer = document.body;
 
 	for (let i = 0; i < confettiCount; i++) {
 		const confetti = document.createElement("div");
+		const size = Math.random() * 8 + 4;
+		confetti.style.width = `${size}px`;
+		confetti.style.height = `${size}px`;
+		confetti.style.backgroundColor = `hsl(${Math.random() * 360}, 90%, 60%)`;
 		confetti.style.position = "fixed";
-		confetti.style.left = Math.random() * 100 + "vw";
-		confetti.style.top = "-10px";
-		confetti.style.width = Math.random() * 10 + 5 + "px";
-		confetti.style.height = confetti.style.width;
-		confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
-		confetti.style.borderRadius = "50%";
+		confetti.style.left = `${Math.random() * 100}vw`;
+		confetti.style.top = `${Math.random() * -200 - 20}px`;
+		confetti.style.opacity = "0";
 		confetti.style.pointerEvents = "none";
 		confetti.style.zIndex = "9999";
-		confetti.style.animation = `confetti-fall ${Math.random() * 2 + 2}s linear forwards`;
 
-		document.body.appendChild(confetti);
+		const fallDuration = Math.random() * 2 + 3;
+		const fallDelay = Math.random() * 2;
+		const swayDuration = Math.random() * 2 + 2;
+
+		confetti.animate(
+			[
+				{ transform: `translateY(0) rotate(0deg)`, opacity: 1 },
+				{ transform: `translateY(110vh) rotate(${Math.random() * 720}deg)`, opacity: 0 },
+			],
+			{
+				duration: fallDuration * 1000,
+				delay: fallDelay * 1000,
+				easing: "ease-out",
+				fill: "forwards",
+			}
+		);
+
+		const sway = document.createElement("div");
+		sway.appendChild(confetti);
+		sway.style.animation = `sway ${swayDuration}s ease-in-out infinite alternate`;
+		confettiContainer.appendChild(sway);
 
 		setTimeout(() => {
-			confetti.remove();
-		}, 4000);
+			sway.remove();
+		}, (fallDuration + fallDelay) * 1000);
 	}
 };
 
@@ -64,37 +115,60 @@ const triggerHaptic = (type: "light" | "medium" | "heavy") => {
 };
 
 // Sound system
-const playSound = (type: "correct" | "incorrect" | "close" | "click" | "type") => {
-	if (typeof window === "undefined") return;
+let audioContext: AudioContext | null = null;
+const initAudioContext = () => {
+	if (typeof window !== "undefined" && !audioContext) {
+		const AudioContextClass = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+		if (AudioContextClass) {
+			audioContext = new AudioContextClass();
+		}
+	}
+	return audioContext;
+};
 
-	const AudioContextClass = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-	if (!AudioContextClass) return;
+const playSound = (type: "correct" | "incorrect" | "close" | "click" | "type" | "hint" | "swoosh") => {
+	const context = initAudioContext();
+	if (!context) return;
 
-	const audioContext = new AudioContextClass();
-	const oscillator = audioContext.createOscillator();
-	const gainNode = audioContext.createGain();
+	if (context.state === "suspended") {
+		context.resume();
+	}
+
+	const oscillator = context.createOscillator();
+	const gainNode = context.createGain();
 
 	oscillator.connect(gainNode);
-	gainNode.connect(audioContext.destination);
+	gainNode.connect(context.destination);
+
+	type Sound = { frequency: number; duration: number; type: OscillatorType; endFrequency?: number };
 
 	// Sound configurations
-	const sounds = {
-		correct: { frequency: 523.25, duration: 0.3, type: "sine" as OscillatorType },
-		incorrect: { frequency: 146.83, duration: 0.2, type: "sawtooth" as OscillatorType },
-		close: { frequency: 329.63, duration: 0.15, type: "triangle" as OscillatorType },
-		click: { frequency: 800, duration: 0.05, type: "square" as OscillatorType },
-		type: { frequency: 1000, duration: 0.02, type: "sine" as OscillatorType },
+	const sounds: Record<string, Sound> = {
+		correct: { frequency: 523.25, duration: 0.3, type: "sine" },
+		incorrect: { frequency: 146.83, duration: 0.2, type: "sawtooth" },
+		close: { frequency: 329.63, duration: 0.15, type: "triangle" },
+		click: { frequency: 800, duration: 0.05, type: "square" },
+		type: { frequency: 1000, duration: 0.02, type: "sine" },
+		hint: { frequency: 440, duration: 0.1, type: "triangle" },
+		swoosh: { frequency: 150, endFrequency: 600, duration: 0.2, type: "sine" },
 	};
 
 	const sound = sounds[type];
-	oscillator.frequency.setValueAtTime(sound.frequency, audioContext.currentTime);
-	oscillator.type = sound.type;
+	if (type === "swoosh" && sound.endFrequency) {
+		gainNode.gain.setValueAtTime(0.001, context.currentTime);
+		gainNode.gain.exponentialRampToValueAtTime(0.2, context.currentTime + sound.duration * 0.2);
+		gainNode.gain.exponentialRampToValueAtTime(0.001, context.currentTime + sound.duration);
+		oscillator.frequency.setValueAtTime(sound.frequency, context.currentTime);
+		oscillator.frequency.exponentialRampToValueAtTime(sound.endFrequency, context.currentTime + sound.duration);
+	} else {
+		oscillator.frequency.setValueAtTime(sound.frequency, context.currentTime);
+		oscillator.type = sound.type;
+		gainNode.gain.setValueAtTime(0.1, context.currentTime);
+		gainNode.gain.exponentialRampToValueAtTime(0.01, context.currentTime + sound.duration);
+	}
 
-	gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
-	gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + sound.duration);
-
-	oscillator.start(audioContext.currentTime);
-	oscillator.stop(audioContext.currentTime + sound.duration);
+	oscillator.start();
+	oscillator.stop(context.currentTime + sound.duration);
 };
 
 // Voice input hook
@@ -138,69 +212,96 @@ const useVoiceInput = (onResult: (text: string) => void) => {
 	return { isListening, isSupported, startListening };
 };
 
-// Progressive hints
-const getProgressiveHint = (attempts: number): string | null => {
-	if (attempts < 2) return null;
-	if (attempts === 2) return "💡 Think about the key words in the riddle...";
-	if (attempts === 3) return "🤔 Consider what the riddle is really asking about...";
-	if (attempts === 4) return "🔍 Look for wordplay or double meanings...";
-	if (attempts >= 5) return "💭 Try breaking down the riddle into parts...";
-	return null;
-};
-
 // Achievement system
 const checkAchievements = (streak: number, totalSolved: number): Achievement[] => {
 	const achievements: Achievement[] = [
-		{ id: "first-solve", title: "First Success", description: "Solved your first riddle!", icon: "🎯", unlocked: totalSolved >= 1 },
-		{ id: "streak-3", title: "Getting Warmed Up", description: "3-day solving streak!", icon: "🔥", unlocked: streak >= 3 },
-		{ id: "streak-7", title: "Week Warrior", description: "7-day solving streak!", icon: "⚡", unlocked: streak >= 7 },
-		{ id: "streak-30", title: "Monthly Master", description: "30-day solving streak!", icon: "👑", unlocked: streak >= 30 },
-		{ id: "total-10", title: "Riddle Rookie", description: "Solved 10 riddles!", icon: "🌟", unlocked: totalSolved >= 10 },
-		{ id: "total-50", title: "Puzzle Pro", description: "Solved 50 riddles!", icon: "💎", unlocked: totalSolved >= 50 },
-		{ id: "total-100", title: "Riddle Master", description: "Solved 100 riddles!", icon: "🏆", unlocked: totalSolved >= 100 },
+		{ id: "first-solve", title: "First Success", description: "Solved your first riddle!", icon: "Target", unlocked: totalSolved >= 1 },
+		{ id: "streak-3", title: "Getting Warmed Up", description: "3-day solving streak!", icon: "Flame", unlocked: streak >= 3 },
+		{ id: "streak-7", title: "Week Warrior", description: "7-day solving streak!", icon: "Zap", unlocked: streak >= 7 },
+		{ id: "streak-30", title: "Monthly Master", description: "30-day solving streak!", icon: "Crown", unlocked: streak >= 30 },
+		{ id: "total-10", title: "Riddle Rookie", description: "Solved 10 riddles!", icon: "Star", unlocked: totalSolved >= 10 },
+		{ id: "total-50", title: "Puzzle Pro", description: "Solved 50 riddles!", icon: "Gem", unlocked: totalSolved >= 50 },
+		{ id: "total-100", title: "Riddle Master", description: "Solved 100 riddles!", icon: "Trophy", unlocked: totalSolved >= 100 },
 	];
 
 	return achievements.filter((a) => a.unlocked);
 };
 
-// Share functionality with debouncing
-let shareTimeout: NodeJS.Timeout | null = null;
-const shareResults = (streak: number, totalSolved: number, todaysSolved: boolean) => {
-	if (shareTimeout) return; // Prevent multiple rapid calls
-
-	const text = `🧩 Daily Riddles Challenge!\n${todaysSolved ? "✅" : "⏳"} Today's riddle: ${todaysSolved ? "SOLVED" : "In progress"}\n🔥 Current streak: ${streak} days\n🎯 Total solved: ${totalSolved}\n\nChallenge your mind at riddles.byronwade.com`;
-
-	shareTimeout = setTimeout(() => {
-		shareTimeout = null;
-	}, 1000); // Debounce for 1 second
-
-	if (navigator.share) {
-		navigator
-			.share({
-				title: "Daily Riddles Challenge",
-				text: text,
-				url: "https://riddles.byronwade.com",
-			})
-			.catch(() => {
-				// If share fails or is cancelled, fall back to clipboard
-				navigator.clipboard.writeText(text);
-				toast.success("Results copied to clipboard!", { duration: 5000 });
-			});
-	} else {
-		navigator.clipboard.writeText(text);
-		toast.success("Results copied to clipboard!", { duration: 5000 });
-	}
-};
+function MobileShare({ config }: { config: ShareConfig }) {
+	return (
+		<Dialog>
+			<DialogTrigger asChild>
+				<Button className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 ease-in-out">
+					<Share2 className="w-5 h-5 mr-2" />
+					Share Your Results
+				</Button>
+			</DialogTrigger>
+			<DialogContent className="sm:max-w-md">
+				<DialogHeader>
+					<DialogTitle>Share with your friends</DialogTitle>
+					<DialogDescription>Choose a platform to share your success.</DialogDescription>
+				</DialogHeader>
+				<div className="py-4">
+					{/* eslint-disable-next-line @typescript-eslint/no-unsafe-assignment */}
+					<InlineShareButtons config={config} />
+				</div>
+			</DialogContent>
+		</Dialog>
+	);
+}
 
 function AchievementBadge({ achievement }: { achievement: Achievement }) {
+	const icons: { [key: string]: React.ElementType } = {
+		Target,
+		Flame,
+		Zap,
+		Crown,
+		Star,
+		Gem,
+		Trophy,
+	};
+	const IconComponent = icons[achievement.icon];
+
 	return (
-		<div className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-yellow-500/20 to-orange-500/20 rounded-lg border border-yellow-500/30 animate-in fade-in-50 slide-in-from-bottom-2 duration-300">
-			<span className="text-lg">{achievement.icon}</span>
+		<div className="flex items-center gap-3 px-3 py-2 bg-gradient-to-r from-yellow-500/20 to-orange-500/20 rounded-lg border border-yellow-500/30">
+			{IconComponent && <IconComponent className="w-5 h-5 text-yellow-500" />}
 			<div>
 				<div className="text-sm font-medium text-foreground">{achievement.title}</div>
 				<div className="text-xs text-muted-foreground">{achievement.description}</div>
 			</div>
 		</div>
+	);
+}
+
+function FeedbackMessage({ feedback }: { feedback: Feedback }) {
+	if (!feedback) return null;
+
+	const messageConfig = {
+		incorrect: {
+			icon: <XCircle className="w-5 h-5 text-red-500" />,
+			className: "text-red-500",
+		},
+		close: {
+			icon: <Lightbulb className="w-5 h-5 text-yellow-500" />,
+			className: "text-yellow-500",
+		},
+		correct: {
+			icon: <CheckCircle className="w-5 h-5 text-green-500" />,
+			className: "text-green-500",
+		},
+		info: {
+			icon: <Info className="w-5 h-5 text-blue-500" />,
+			className: "text-blue-500",
+		},
+	};
+
+	const config = messageConfig[feedback.type];
+
+	return (
+		<motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }} className="flex items-center justify-center gap-2 pt-2">
+			{config.icon}
+			<p className={`text-sm font-medium ${config.className}`}>{feedback.message}</p>
+		</motion.div>
 	);
 }
 
@@ -210,9 +311,11 @@ function IntegratedSubmitInput({ value, onChange, disabled, onVoiceInput }: { va
 	const { isListening, isSupported, startListening } = useVoiceInput(onVoiceInput);
 
 	const handleKeyDown = (e: React.KeyboardEvent) => {
-		if (e.key === "Enter" && value.trim() && !disabled && !pending) {
-			playSound("click");
-			triggerHaptic("light");
+		if (e.key === "Enter" && !e.shiftKey) {
+			e.preventDefault();
+			if (value.trim() && !disabled && !pending) {
+				inputRef.current?.closest("form")?.requestSubmit();
+			}
 		}
 	};
 
@@ -225,8 +328,6 @@ function IntegratedSubmitInput({ value, onChange, disabled, onVoiceInput }: { va
 
 	const handleButtonClick = () => {
 		if (value.trim() && !disabled && !pending) {
-			playSound("click");
-			triggerHaptic("medium");
 			const form = inputRef.current?.closest("form");
 			if (form) {
 				const submitEvent = new Event("submit", { bubbles: true, cancelable: true });
@@ -236,22 +337,25 @@ function IntegratedSubmitInput({ value, onChange, disabled, onVoiceInput }: { va
 	};
 
 	const handleVoiceClick = () => {
+		playSound("click");
 		triggerHaptic("light");
 		startListening();
 	};
 
 	return (
 		<div className="relative group">
-			<Input ref={inputRef} name="answer" placeholder="Type your answer and press Enter..." required value={value} onChange={handleChange} onKeyDown={handleKeyDown} disabled={disabled || pending} className="w-full h-14 px-4 pr-32 text-lg bg-transparent border-2 border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:border-foreground focus:outline-none transition-all duration-200 disabled:opacity-50 group-hover:border-foreground/50" autoComplete="off" autoFocus />
+			<Input ref={inputRef} name="answer" placeholder="Type your answer..." required value={value} onKeyDown={handleKeyDown} onChange={handleChange} disabled={disabled || pending} className="w-full h-16 px-16 pr-32 text-lg bg-background border-2 border-border/50 rounded-full text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all duration-300" autoComplete="off" autoFocus />
 
-			{isSupported && (
-				<Button type="button" onClick={handleVoiceClick} disabled={disabled || pending} size="sm" className={`absolute right-14 top-1/2 -translate-y-1/2 bg-muted text-foreground hover:bg-muted/80 disabled:opacity-50 px-3 py-2 text-sm font-medium transition-all duration-200 hover:scale-[1.05] active:scale-[0.95] ${isListening ? "bg-red-500 text-white animate-pulse" : ""}`}>
-					🎤
-				</Button>
-			)}
+			<div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
+				{isSupported && (
+					<Button type="button" variant="ghost" size="icon" onClick={handleVoiceClick} disabled={disabled || pending} className="rounded-full text-muted-foreground hover:text-foreground">
+						{isListening ? <div className="w-5 h-5 rounded-full bg-red-500 animate-pulse" /> : <Mic className="w-5 h-5" />}
+					</Button>
+				)}
+			</div>
 
-			<Button type="button" onClick={handleButtonClick} disabled={disabled || pending || !value.trim()} size="sm" className="absolute right-2 top-1/2 -translate-y-1/2 bg-foreground text-background hover:bg-foreground/90 disabled:opacity-50 px-4 py-2 text-sm font-medium transition-all duration-200 hover:scale-[1.05] active:scale-[0.95] disabled:hover:scale-100">
-				{pending ? <div className="w-4 h-4 border border-background/30 border-t-background rounded-full animate-spin" /> : "→"}
+			<Button type="button" onClick={handleButtonClick} disabled={disabled || pending || !value.trim()} className="absolute right-3 top-1/2 -translate-y-1/2 h-11 rounded-full bg-foreground text-background hover:bg-foreground/90 disabled:opacity-50 px-6 flex items-center justify-center text-base font-medium transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] disabled:hover:scale-100">
+				{pending ? <div className="w-4 h-4 border border-background/30 border-t-background rounded-full animate-spin" /> : "Submit"}
 			</Button>
 		</div>
 	);
@@ -259,378 +363,504 @@ function IntegratedSubmitInput({ value, onChange, disabled, onVoiceInput }: { va
 
 IntegratedSubmitInput.displayName = "IntegratedSubmitInput";
 
-function CompletionState({ streak, totalSolved }: { streak: number; totalSolved: number }) {
-	const [timeUntilNext, setTimeUntilNext] = useState("");
-	const achievements = checkAchievements(streak, totalSolved);
+function CompletionState({ streak, totalSolved, nickname, onShowArchive, feedback }: { streak: number; totalSolved: number; nickname: string; onShowArchive: () => void; feedback: string }) {
+	const [timeLeft, setTimeLeft] = useState("");
 
 	useEffect(() => {
-		const updateCountdown = () => {
+		const calculateTimeLeft = () => {
 			const now = new Date();
-			const tomorrow = new Date(now);
-			tomorrow.setDate(tomorrow.getDate() + 1);
-			tomorrow.setHours(0, 0, 0, 0);
-
-			const diff = tomorrow.getTime() - now.getTime();
+			const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0);
+			const diff = midnight.getTime() - now.getTime();
 			const hours = Math.floor(diff / (1000 * 60 * 60));
 			const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
 			const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-
-			setTimeUntilNext(`${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`);
+			setTimeLeft(`${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`);
 		};
 
-		updateCountdown();
-		const interval = setInterval(updateCountdown, 1000);
-
-		return () => clearInterval(interval);
+		calculateTimeLeft();
+		const timer = setInterval(calculateTimeLeft, 1000);
+		return () => clearInterval(timer);
 	}, []);
 
+	const achievements = checkAchievements(streak, totalSolved);
+	const isMobile = useIsMobile();
+
+	const shareUrl = typeof window !== "undefined" ? window.location.href : "";
+	const shareConfig: StickyShareButtonsConfig = {
+		config: {
+			alignment: "center",
+			color: "social",
+			enabled: true,
+			font_size: 16,
+			labels: "cta",
+			language: "en",
+			min_count: 0,
+			networks: ["facebook", "twitter", "whatsapp", "reddit", "email"],
+			padding: 12,
+			radius: 8,
+			show_total: false,
+			show_mobile: true,
+			show_toggle: false,
+			size: 48,
+			top: 150,
+			url: shareUrl,
+			title: `I solved today's riddle! Can you? My streak is ${streak}!`,
+			description: "Challenge your mind with a new riddle every day.",
+		},
+	};
+
 	return (
-		<div className="text-center space-y-6 sm:space-y-8 animate-in fade-in-50 slide-in-from-bottom-4 duration-700">
-			<div className="space-y-3 sm:space-y-4">
-				<div className="text-4xl sm:text-5xl lg:text-6xl">🎉</div>
-				<h2 className="text-xl sm:text-2xl font-bold text-foreground">Congratulations!</h2>
-				<p className="text-sm sm:text-base text-muted-foreground">You&apos;ve completed today&apos;s riddle!</p>
-			</div>
+		<motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.5, ease: "easeInOut" }} className="w-full max-w-2xl mx-auto space-y-6 py-8">
+			<div className="p-6 sm:p-8 bg-gradient-to-br from-green-500/10 via-background to-background rounded-2xl border border-green-500/20 shadow-2xl shadow-green-500/10 text-center space-y-6 relative overflow-hidden">
+				<div className="absolute -top-1/4 -left-1/4 w-1/2 h-1/2 bg-green-500/20 rounded-full filter blur-3xl" />
+				<div className="absolute -bottom-1/4 -right-1/4 w-1/2 h-1/2 bg-blue-500/20 rounded-full filter blur-3xl" />
 
-			<div className="space-y-3 sm:space-y-4">
-				<div className="flex justify-center gap-4 sm:gap-8 text-sm">
-					<div className="text-center">
-						<div className="text-2xl sm:text-3xl font-bold text-green-600 dark:text-green-400">{streak}</div>
-						<div className="text-muted-foreground text-xs sm:text-sm">Day Streak</div>
-					</div>
-					<div className="w-px h-10 sm:h-12 bg-border" />
-					<div className="text-center">
-						<div className="text-2xl sm:text-3xl font-bold text-blue-600 dark:text-blue-400">{totalSolved}</div>
-						<div className="text-muted-foreground text-xs sm:text-sm">Total Solved</div>
-					</div>
+				<motion.div initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ delay: 0.2, type: "spring", stiffness: 200, damping: 10 }} className="relative z-10">
+					<Award className="w-16 h-16 text-green-400 mx-auto bg-green-500/10 p-3 rounded-full" />
+				</motion.div>
+
+				<h2 className="text-3xl sm:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-blue-500 relative z-10">Riddle Solved!</h2>
+				<p className="text-muted-foreground text-lg relative z-10">
+					Well done, <span className="font-semibold text-foreground">{nickname}</span>!
+				</p>
+
+				<div className="text-center bg-green-500/10 border border-green-500/20 rounded-lg p-3 text-green-700 dark:text-green-300 relative z-10">
+					<p className="text-sm font-medium">{feedback}</p>
 				</div>
-			</div>
 
-			{/* Achievements */}
-			{achievements.length > 0 && (
-				<div className="space-y-2 sm:space-y-3">
-					<h3 className="text-base sm:text-lg font-semibold text-foreground">🏆 Achievements</h3>
-					<div className="space-y-2 max-w-md mx-auto">
-						{achievements.slice(-3).map((achievement) => (
-							<AchievementBadge key={achievement.id} achievement={achievement} />
-						))}
+				{/* Stats */}
+				<motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center relative z-10">
+					<div className="p-4 bg-background/50 rounded-lg border border-border/50">
+						<div className="text-2xl font-bold">{streak}</div>
+						<div className="text-sm text-muted-foreground">Current Streak</div>
 					</div>
-				</div>
-			)}
+					<div className="p-4 bg-background/50 rounded-lg border border-border/50">
+						<div className="text-2xl font-bold">{totalSolved}</div>
+						<div className="text-sm text-muted-foreground">Total Solved</div>
+					</div>
+					<div className="p-4 bg-background/50 rounded-lg border border-border/50">
+						<div className="text-2xl font-bold">{timeLeft}</div>
+						<div className="text-sm text-muted-foreground">Next Riddle</div>
+					</div>
+				</motion.div>
 
-			{/* Share Button */}
-			<Button onClick={() => shareResults(streak, totalSolved, true)} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-all duration-200 hover:scale-[1.02]">
-				📱 Share Results
-			</Button>
+				{/* Achievements */}
+				{achievements.length > 0 && (
+					<motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }} className="space-y-3 relative z-10">
+						<h3 className="text-lg font-semibold text-left">Your Achievements</h3>
+						<div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+							{achievements.map((ach, i) => (
+								<motion.div key={ach.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.5 + i * 0.1 }}>
+									<AchievementBadge achievement={ach} />
+								</motion.div>
+							))}
+						</div>
+					</motion.div>
+				)}
 
-			<div className="space-y-1 sm:space-y-2">
-				<p className="text-xs sm:text-sm text-muted-foreground">Next riddle in:</p>
-				<div className="text-xl sm:text-2xl font-mono font-bold text-foreground">{timeUntilNext}</div>
-				<p className="text-xs text-muted-foreground">Come back tomorrow for a new challenge!</p>
+				{/* Share */}
+				<motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="pt-4 relative z-10">
+					{isMobile ? <MobileShare config={shareConfig.config} /> : <InlineShareButtons config={shareConfig.config} />}
+				</motion.div>
 			</div>
-		</div>
+
+			<div className="text-center">
+				<Button onClick={onShowArchive} variant="ghost" className="text-muted-foreground hover:text-foreground">
+					<RotateCcw className="w-4 h-4 mr-2" />
+					Practice in the Riddle Archive
+				</Button>
+			</div>
+		</motion.div>
 	);
 }
 
 function LoadingOverlay() {
 	const { pending } = useFormStatus();
-	if (!pending) return null;
+
 	return (
-		<div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50">
-			<div className="flex flex-col items-center gap-4">
-				<div className="w-10 h-10 border-4 border-foreground border-t-transparent rounded-full animate-spin" />
-				<p className="text-lg text-muted-foreground font-semibold">🤖 AI is validating your answer...</p>
-			</div>
-		</div>
+		<AnimatePresence>
+			{pending && (
+				<motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-background/90 backdrop-blur-sm flex items-center justify-center z-50">
+					<div className="text-center">
+						<div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin mx-auto mb-4" />
+						<p className="text-muted-foreground font-medium animate-pulse">Checking your answer...</p>
+					</div>
+				</motion.div>
+			)}
+		</AnimatePresence>
 	);
 }
 
-export default function DailyRiddleGame({ initialRiddle }: { initialRiddle: Riddle }) {
-	const [riddle] = useState(initialRiddle);
+export default function DailyRiddleGame({ initialRiddle, allRiddles }: { initialRiddle: Riddle; allRiddles: Riddle[] }) {
+	const [state, formAction] = useActionState<FormState, FormData>(submitAnswer, null);
 	const [answerInput, setAnswerInput] = useState("");
+	const [feedback, setFeedback] = useState<Feedback>(null);
+	const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
+	const [showArchive, setShowArchive] = useState(false);
+	const [isLoading, setIsLoading] = useState(true);
+	const formRef = useRef<HTMLFormElement>(null);
+
+	// Stats state
+	const [nickname, setNickname] = useState("Riddler");
 	const [streak, setStreak] = useState(0);
 	const [totalSolved, setTotalSolved] = useState(0);
 	const [attempts, setAttempts] = useState(0);
-	const [mounted, setMounted] = useState(false);
-	const [isCompleted, setIsCompleted] = useState(false);
-	const [showShake, setShowShake] = useState(false);
-	const [aiHint, setAiHint] = useState<string | null>(null);
-	const [isLoadingHint, setIsLoadingHint] = useState(false);
-	const formRef = useRef<HTMLFormElement>(null);
+	const [lastSolvedDate, setLastSolvedDate] = useState<string | null>(null);
+	const [isEditingNickname, setIsEditingNickname] = useState(false);
+	const [nicknameSaved, setNicknameSaved] = useState(false);
+	const [newlyUnlockedAchievements, setNewlyUnlockedAchievements] = useState<Achievement[]>([]);
 
-	// Add CSS animations
-	useEffect(() => {
-		if (typeof document !== "undefined") {
-			const style = document.createElement("style");
-			style.id = "riddle-animations";
-			style.textContent = `
-				@keyframes confetti-fall {
-					0% {
-						transform: translateY(-10px) rotate(0deg);
-						opacity: 1;
-					}
-					100% {
-						transform: translateY(100vh) rotate(360deg);
-						opacity: 0;
-					}
-				}
-				@keyframes shake {
-					0%, 100% { transform: translateX(0); }
-					10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
-					20%, 40%, 60%, 80% { transform: translateX(5px); }
-				}
-				.shake {
-					animation: shake 0.5s ease-in-out;
-				}
-			`;
-			if (!document.getElementById("riddle-animations")) {
-				document.head.appendChild(style);
-			}
-		}
-	}, []);
+	// Share config
+	const shareUrl = typeof window !== "undefined" ? window.location.href : "";
+	const shareConfig: StickyShareButtonsConfig = {
+		config: {
+			alignment: "center",
+			color: "social",
+			enabled: true,
+			font_size: 16,
+			labels: "cta",
+			language: "en",
+			min_count: 0,
+			networks: ["facebook", "twitter", "whatsapp", "reddit", "email"],
+			padding: 12,
+			radius: 8,
+			show_total: false,
+			show_mobile: true,
+			show_toggle: false,
+			size: 48,
+			top: 150,
+			url: shareUrl,
+			title: `I solved today's riddle! Can you?`,
+			description: `Come try and solve the daily riddle.`,
+		},
+	};
 
 	useEffect(() => {
-		setMounted(true);
-		if (typeof window !== "undefined") {
-			const savedStreak = localStorage.getItem("riddle-streak");
-			const savedTotal = localStorage.getItem("riddle-total");
-			const lastCompletedDate = localStorage.getItem("last-completed-date");
-			const today = new Date().toISOString().split("T")[0];
+		const init = () => {
+			if (typeof window !== "undefined") {
+				setIsLoading(true);
+				// Load stats
+				const savedNickname = localStorage.getItem("riddle-nickname");
+				if (savedNickname) setNickname(savedNickname);
 
-			if (savedStreak) setStreak(parseInt(savedStreak));
-			if (savedTotal) setTotalSolved(parseInt(savedTotal));
+				const savedLastSolved = localStorage.getItem("riddle-last-solved");
+				const today = new Date().toISOString().split("T")[0];
+				const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
 
-			if (lastCompletedDate === today) {
-				setIsCompleted(true);
+				const currentStreak = parseInt(localStorage.getItem("riddle-streak") || "0");
+				const savedAttemptsDate = localStorage.getItem("riddle-attempts-date");
+				if (savedLastSolved === today) {
+					setIsCorrect(true);
+					setStreak(currentStreak);
+				} else if (savedLastSolved !== yesterday) {
+					localStorage.setItem("riddle-streak", "0");
+					setStreak(0);
+				} else {
+					setStreak(currentStreak);
+				}
+
+				if (savedAttemptsDate === today) {
+					setAttempts(parseInt(localStorage.getItem("riddle-attempts") || "0"));
+				} else {
+					localStorage.setItem("riddle-attempts", "0");
+					localStorage.setItem("riddle-attempts-date", today);
+					setAttempts(0);
+				}
+
+				setLastSolvedDate(savedLastSolved);
+				setTotalSolved(parseInt(localStorage.getItem("riddle-total") || "0"));
+
+				// Sound context & animations
+				initAudioContext();
+				const style = document.createElement("style");
+				style.id = "riddle-animations";
+				style.textContent = `
+          @keyframes sway {
+            from { transform: translateX(-5px) rotate(-1deg); }
+            to { transform: translateX(5px) rotate(1deg); }
+          }
+        `;
+				if (!document.getElementById("riddle-animations")) {
+					document.head.appendChild(style);
+				}
+
+				setIsLoading(false);
 			}
-		}
+		};
+		init();
 	}, []);
+
+	const handleAnswerChange = (value: string) => {
+		setAnswerInput(value);
+		setFeedback(null); // Clear feedback when user types
+	};
 
 	const handleVoiceInput = (text: string) => {
 		setAnswerInput(text);
-		toast.success(`Voice input: "${text}"`, { duration: 5000 });
 	};
 
-	// Generate AI hint when attempts increase
 	useEffect(() => {
-		if (attempts >= 3 && !aiHint && !isLoadingHint) {
-			setIsLoadingHint(true);
-			getAIHint(riddle.riddle, riddle.answer, attempts)
-				.then((hint) => {
-					setAiHint(hint);
-					setIsLoadingHint(false);
-				})
-				.catch(() => {
-					setIsLoadingHint(false);
-				});
-		}
-	}, [attempts, aiHint, isLoadingHint, riddle.riddle, riddle.answer]);
+		if (state) {
+			const newAttempts = attempts + 1;
+			setAttempts(newAttempts);
+			localStorage.setItem("riddle-attempts", newAttempts.toString());
 
-	const [state, formAction] = useActionState(async (previousState: FormState, formData: FormData) => {
-		const result = await submitAnswer(formData);
-		setAttempts((prev) => prev + 1);
+			setFeedback({ message: state.feedback, type: state.status });
+			if (state.status === "correct") {
+				playSound("correct");
+				triggerHaptic("medium");
 
-		if (result.status === "correct") {
-			playSound("correct");
-			triggerHaptic("medium");
-			createConfetti();
+				const today = new Date().toISOString().split("T")[0];
+				if (lastSolvedDate !== today) {
+					const oldStreak = streak;
+					const oldTotal = totalSolved;
 
-			toast.success(`🎉 ${result.feedback}`, {
-				duration: 5000,
-				style: {
-					background: "hsl(var(--background))",
-					color: "hsl(var(--foreground))",
-					border: "1px solid hsl(var(--border))",
-				},
-			});
+					const newStreak = lastSolvedDate === new Date(Date.now() - 86400000).toISOString().split("T")[0] ? streak + 1 : 1;
+					const newTotal = totalSolved + 1;
 
-			const newStreak = streak + 1;
-			const newTotal = totalSolved + 1;
-			const today = new Date().toISOString().split("T")[0];
+					const oldAchievements = checkAchievements(oldStreak, oldTotal);
+					const newAchievements = checkAchievements(newStreak, newTotal);
+					const unlocked = newAchievements.filter((a) => !oldAchievements.some((oa) => oa.id === a.id));
+					setNewlyUnlockedAchievements(unlocked);
 
-			setStreak(newStreak);
-			setTotalSolved(newTotal);
-			setAnswerInput("");
-			setAttempts(0);
-			setAiHint(null);
+					setStreak(newStreak);
+					setTotalSolved(newTotal);
+					setLastSolvedDate(today);
 
-			if (typeof window !== "undefined") {
-				localStorage.setItem("riddle-streak", newStreak.toString());
-				localStorage.setItem("riddle-total", newTotal.toString());
-				localStorage.setItem("last-completed-date", today);
+					localStorage.setItem("riddle-streak", newStreak.toString());
+					localStorage.setItem("riddle-total", newTotal.toString());
+					localStorage.setItem("riddle-last-solved", today);
+				}
+				setTimeout(() => setIsCorrect(true), 500); // Delay for feedback visibility
+				createConfetti();
+				playSound("swoosh");
+			} else if (state.status === "close") {
+				playSound("close");
+				triggerHaptic("light");
+			} else {
+				playSound("incorrect");
+				triggerHaptic("heavy");
 			}
-
-			setTimeout(() => {
-				setIsCompleted(true);
-			}, 2000);
-		} else if (result.status === "close") {
-			playSound("close");
-			triggerHaptic("medium");
-			toast.info(`💭 ${result.feedback}`, {
-				duration: 5000,
-				style: {
-					background: "hsl(var(--background))",
-					color: "hsl(var(--foreground))",
-					border: "1px solid hsl(var(--border))",
-				},
-			});
-		} else {
-			playSound("incorrect");
-			triggerHaptic("heavy");
-			setShowShake(true);
-			setTimeout(() => setShowShake(false), 500);
-
-			toast.error(`🤔 ${result.feedback}`, {
-				duration: 5000,
-				style: {
-					background: "hsl(var(--background))",
-					color: "hsl(var(--foreground))",
-					border: "1px solid hsl(var(--border))",
-				},
-			});
 		}
-		return result;
-	}, null);
+	}, [state, lastSolvedDate, streak, totalSolved, attempts]);
 
-	if (!mounted) {
+	const handleNicknameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+		setNickname(e.target.value);
+	};
+
+	const handleNicknameSave = () => {
+		setIsEditingNickname(false);
+		if (typeof window !== "undefined") {
+			localStorage.setItem("riddle-nickname", nickname);
+		}
+		setNicknameSaved(true);
+		setTimeout(() => setNicknameSaved(false), 2000);
+	};
+
+	const handleNicknameKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+		if (e.key === "Enter") {
+			handleNicknameSave();
+		}
+	};
+
+	const handleShowArchive = () => {
+		setShowArchive(true);
+		playSound("click");
+		triggerHaptic("light");
+	};
+
+	const handleExitArchive = () => {
+		setShowArchive(false);
+		playSound("click");
+		triggerHaptic("light");
+	};
+
+	const isMobile = useIsMobile();
+	const currentAchievements = checkAchievements(streak, totalSolved);
+
+	if (isLoading) {
 		return (
-			<div className="text-center py-12">
-				<div className="w-8 h-8 border-2 border-foreground border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-				<p className="text-muted-foreground animate-pulse">Loading your daily riddle...</p>
+			<div className="flex items-center justify-center min-h-screen">
+				<div className="text-center">
+					<div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin mx-auto mb-4" />
+					<p className="text-muted-foreground font-medium animate-pulse">Loading your daily riddle...</p>
+				</div>
 			</div>
 		);
 	}
 
-	const currentHint = getProgressiveHint(attempts);
-	const achievements = checkAchievements(streak, totalSolved);
+	if (showArchive) {
+		const practiceRiddles = allRiddles.map((r) => ({ riddle: r.riddle, answer: "" }));
+		return <RiddleArchive allRiddles={practiceRiddles} dailyRiddle={initialRiddle} onExit={handleExitArchive} />;
+	}
 
 	return (
 		<TooltipProvider>
 			<div className="relative min-h-screen">
+				{!isCorrect && !isMobile && <StickyShareButtons {...shareConfig.config} />}
+
 				{/* Top Bar with Stats and Theme Toggle */}
 				<div className="flex items-start justify-between mb-8 sm:mb-12 lg:mb-16">
-					{/* Stats - Top Left Corner */}
+					{/* Stats */}
 					<div className="flex items-center gap-2 sm:gap-4 text-sm">
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<div className="text-center cursor-pointer hover:scale-105 transition-transform duration-200 group" onClick={() => !isEditingNickname && setIsEditingNickname(true)}>
+									{isEditingNickname ? (
+										<Input type="text" value={nickname} onChange={handleNicknameChange} onBlur={handleNicknameSave} onKeyDown={handleNicknameKeyDown} className="w-24 h-8 text-center bg-transparent border-b-2" autoFocus />
+									) : (
+										<>
+											<div className="text-lg sm:text-xl font-bold text-foreground flex items-center gap-1">
+												{nickname}
+												<Pencil className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+											</div>
+											<div className="text-muted-foreground text-xs relative">
+												Nickname
+												{nicknameSaved && (
+													<motion.span initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} className="absolute -right-12 top-0 text-xs text-green-500">
+														Saved!
+													</motion.span>
+												)}
+											</div>
+										</>
+									)}
+								</div>
+							</TooltipTrigger>
+							<TooltipContent>
+								<p>Click to edit your nickname</p>
+							</TooltipContent>
+						</Tooltip>
+						<div className="w-px h-6 bg-border" />
 						<Tooltip>
 							<TooltipTrigger asChild>
 								<div className="text-center cursor-help hover:scale-105 transition-transform duration-200">
 									<div className="text-lg sm:text-xl font-bold text-foreground">{streak}</div>
 									<div className="text-muted-foreground text-xs">Streak</div>
-									{achievements.some((a) => a.id.includes("streak")) && <div className="text-xs">🏆</div>}
 								</div>
 							</TooltipTrigger>
 							<TooltipContent>
-								<p>Consecutive days with correct answers</p>
+								<p>Your current daily solving streak.</p>
 							</TooltipContent>
 						</Tooltip>
-
 						<div className="w-px h-6 bg-border" />
-
 						<Tooltip>
 							<TooltipTrigger asChild>
 								<div className="text-center cursor-help hover:scale-105 transition-transform duration-200">
 									<div className="text-lg sm:text-xl font-bold text-foreground">{totalSolved}</div>
 									<div className="text-muted-foreground text-xs">Solved</div>
-									{achievements.some((a) => a.id.includes("total")) && <div className="text-xs">🏆</div>}
 								</div>
 							</TooltipTrigger>
 							<TooltipContent>
-								<p>Total riddles solved correctly</p>
+								<p>Total riddles solved.</p>
+							</TooltipContent>
+						</Tooltip>
+						<div className="w-px h-6 bg-border" />
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<div className="text-center cursor-help hover:scale-105 transition-transform duration-200">
+									<div className="text-lg sm:text-xl font-bold text-foreground">{attempts}</div>
+									<div className="text-muted-foreground text-xs">Attempts</div>
+								</div>
+							</TooltipTrigger>
+							<TooltipContent>
+								<p>Your attempts for today's riddle.</p>
 							</TooltipContent>
 						</Tooltip>
 
-						{!isCompleted && (
+						{!isCorrect && (
 							<>
 								<div className="w-px h-6 bg-border" />
-
-								<Tooltip>
-									<TooltipTrigger asChild>
-										<div className="text-center cursor-help hover:scale-105 transition-transform duration-200">
-											<div className="text-lg sm:text-xl font-bold text-foreground">{attempts}</div>
-											<div className="text-muted-foreground text-xs">Attempts</div>
-										</div>
-									</TooltipTrigger>
-									<TooltipContent>
-										<p>Attempts on current riddle</p>
-									</TooltipContent>
-								</Tooltip>
+								<Button onClick={handleShowArchive} variant="ghost" size="sm" className="hidden sm:inline-flex">
+									<RotateCcw className="w-4 h-4 mr-2" />
+									Practice
+								</Button>
 							</>
 						)}
 					</div>
 
-					{/* Theme Toggle and Share - Top Right Corner */}
+					{/* Controls */}
 					<div className="flex items-center gap-2">
-						{!isCompleted && (
-							<Button onClick={() => shareResults(streak, totalSolved, false)} size="sm" variant="outline" className="hover:scale-105 transition-transform duration-200">
-								📱
-							</Button>
-						)}
-						<div className="hover:scale-105 transition-transform duration-200">
-							<ThemeToggle />
-						</div>
+						<ThemeToggle />
 					</div>
 				</div>
 
-				{/* Main Content */}
-				<div className={cn("space-y-6 sm:space-y-8 lg:space-y-12 max-w-2xl mx-auto", showShake && "animate-shake")}>
-					{isCompleted ? (
-						<CompletionState streak={streak} totalSolved={totalSolved} />
-					) : (
-						<>
-							{/* Riddle - Clean typography with better animation */}
-							<div className="text-center space-y-4 sm:space-y-6">
-								<div className="animate-in fade-in-50 slide-in-from-bottom-4 duration-700">
-									<p className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-medium text-foreground leading-relaxed text-balance hover:text-foreground/80 transition-colors duration-300">{riddle.riddle}</p>
-								</div>
+				{/* Newly Unlocked Achievements */}
+				<AnimatePresence>
+					{newlyUnlockedAchievements.length > 0 && (
+						<motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} className="mb-6 space-y-2">
+							<h3 className="text-sm font-medium text-center text-yellow-500">New Achievement Unlocked!</h3>
+							<div className="flex flex-wrap justify-center gap-2">
+								{newlyUnlockedAchievements.map((ach) => (
+									<AchievementBadge key={ach.id} achievement={ach} />
+								))}
 							</div>
-
-							{/* Answer Form - Enhanced integrated input */}
-							<div className={cn("max-w-md mx-auto space-y-4 sm:space-y-6", showShake && "animate-shake")}>
-								<form action={formAction} ref={formRef} className="w-full max-w-2xl relative">
-									<input type="hidden" name="riddleAnswer" value={riddle.answer} />
-									<input type="hidden" name="riddleText" value={riddle.riddle} />
-
-									<div className="animate-in fade-in-50 slide-in-from-bottom-4 duration-700 delay-200">
-										<IntegratedSubmitInput value={answerInput} onChange={setAnswerInput} disabled={false} onVoiceInput={handleVoiceInput} />
-									</div>
-									<LoadingOverlay />
-								</form>
-
-								{/* Feedback is now handled by toasts, this section can be removed or repurposed */}
-								{state?.feedback && (
-									<div className="sr-only" aria-live="polite">
-										{state.feedback}
-									</div>
-								)}
-							</div>
-
-							{/* Progressive Hints */}
-							{(currentHint || aiHint || isLoadingHint) && (
-								<div className="text-center max-w-md mx-auto animate-in fade-in-50 slide-in-from-bottom-4 duration-500">
-									<div className="py-4 px-6 bg-muted/30 rounded-lg border border-border/50 hover:bg-muted/40 transition-colors duration-300">
-										{isLoadingHint ? (
-											<div className="flex items-center justify-center gap-2">
-												<div className="w-4 h-4 border-2 border-muted-foreground/30 border-t-muted-foreground rounded-full animate-spin" />
-												<p className="text-sm text-muted-foreground">🤖 AI is thinking of a hint...</p>
-											</div>
-										) : (
-											<p className="text-sm text-muted-foreground">{aiHint ? `🤖 ${aiHint}` : currentHint}</p>
-										)}
-									</div>
-								</div>
-							)}
-
-							{/* Progress indicator for attempts */}
-							{attempts > 0 && (
-								<div className="flex justify-center space-x-1 animate-in fade-in-50 duration-300">
-									{Array.from({ length: Math.min(attempts, 5) }).map((_, i) => (
-										<div key={i} className="w-2 h-2 rounded-full bg-muted-foreground/30 animate-in zoom-in-50 duration-200" style={{ animationDelay: `${i * 100}ms` }} />
-									))}
-								</div>
-							)}
-						</>
+						</motion.div>
 					)}
+				</AnimatePresence>
+
+				{/* Main Content */}
+				<div className="relative max-w-2xl mx-auto">
+					<AnimatePresence mode="wait">
+						{isCorrect ? (
+							<motion.div key="completion">
+								<CompletionState streak={streak} totalSolved={totalSolved} nickname={nickname} onShowArchive={handleShowArchive} feedback={state?.feedback || ""} />
+							</motion.div>
+						) : (
+							<motion.div key="riddle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-8 sm:space-y-12">
+								{/* Riddle Text */}
+								<div className="text-center space-y-4 sm:space-y-6">
+									<div className="animate-in fade-in-50 slide-in-from-bottom-4 duration-700">
+										<p className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-medium text-foreground leading-relaxed text-balance hover:text-foreground/80 transition-colors duration-300">{initialRiddle.riddle}</p>
+									</div>
+								</div>
+
+								{/* Answer Form */}
+								<div className={cn("max-w-md mx-auto space-y-4 sm:space-y-6")}>
+									<form
+										action={(formData) => {
+											setFeedback(null);
+											formAction(formData);
+										}}
+										ref={formRef}
+										className="w-full max-w-2xl relative"
+									>
+										<input type="hidden" name="riddleAnswer" value={initialRiddle.answer} />
+										<input type="hidden" name="riddleText" value={initialRiddle.riddle} />
+
+										<div className="animate-in fade-in-50 slide-in-from-bottom-4 duration-700 delay-200">
+											<IntegratedSubmitInput value={answerInput} onChange={handleAnswerChange} disabled={!!isCorrect} onVoiceInput={handleVoiceInput} />
+										</div>
+										<LoadingOverlay />
+									</form>
+									<AnimatePresence>
+										<FeedbackMessage feedback={feedback} />
+									</AnimatePresence>
+								</div>
+							</motion.div>
+						)}
+					</AnimatePresence>
 				</div>
+
+				{isMobile && !isCorrect && (
+					<div className="mt-8 flex justify-center">
+						<Dialog>
+							<DialogTrigger asChild>
+								<Button variant="outline">
+									<Share2 className="w-4 h-4 mr-2" /> Share
+								</Button>
+							</DialogTrigger>
+							<DialogContent>
+								<DialogHeader>
+									<DialogTitle>Share this riddle</DialogTitle>
+								</DialogHeader>
+								<div className="py-4">
+									{/* eslint-disable-next-line @typescript-eslint/no-unsafe-assignment */}
+									<InlineShareButtons config={shareConfig.config} />
+								</div>
+							</DialogContent>
+						</Dialog>
+					</div>
+				)}
 			</div>
 		</TooltipProvider>
 	);

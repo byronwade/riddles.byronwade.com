@@ -3,6 +3,7 @@ import { GeistSans } from "geist/font/sans";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
+import Script from "next/script";
 
 export const metadata: Metadata = {
 	title: "Daily Riddles - Free Brain Teasers & Puzzles",
@@ -72,7 +73,7 @@ export const metadata: Metadata = {
 		"apple-mobile-web-app-status-bar-style": "default",
 		"apple-mobile-web-app-title": "Daily Riddles",
 		"application-name": "Daily Riddles",
-		"msapplication-TileColor": "#2563eb",
+		"msapplication-TileColor": "#0a0a0a",
 		"msapplication-config": "/browserconfig.xml",
 		"apple-touch-icon": "/apple-touch-icon.png",
 		"mask-icon": "/safari-pinned-tab.svg",
@@ -101,7 +102,9 @@ export const metadata: Metadata = {
 	},
 	manifest: "/manifest.json",
 	appleWebApp: {
-		// ... existing code ...
+		capable: true,
+		statusBarStyle: "default",
+		title: "Daily Riddles",
 	},
 };
 
@@ -364,10 +367,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 				/>
 			</head>
 			<body className={`${GeistSans.className} antialiased`}>
-				<ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
+				<ThemeProvider attribute="class" defaultTheme="system" enableSystem>
 					{children}
 					<Toaster />
 				</ThemeProvider>
+				<Script src="https://platform-api.sharethis.com/js/sharethis.js#property=YOUR_SHARETHIS_PROPERTY_ID&product=sticky-share-buttons" async />
 			</body>
 		</html>
   );

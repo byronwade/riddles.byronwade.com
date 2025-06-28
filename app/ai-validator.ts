@@ -74,37 +74,3 @@ Respond with ONLY the JSON object, no additional text.`;
 		};
 	}
 }
-
-export async function getHintWithAI(riddleText: string, correctAnswer: string, attempts: number): Promise<string> {
-	try {
-		const prompt = `You are a helpful riddle assistant. The user is stuck on this riddle and needs a hint.
-
-RIDDLE: "${riddleText}"
-CORRECT ANSWER: "${correctAnswer}"
-ATTEMPTS MADE: ${attempts}
-
-Provide a helpful hint based on the number of attempts:
-- 1-2 attempts: Give a subtle hint that points in the right direction
-- 3-4 attempts: Provide a more specific hint without giving away the answer
-- 5+ attempts: Give a stronger hint that narrows down the possibilities
-
-Make the hint encouraging and educational. Keep it concise (1-2 sentences max).
-Don't give away the answer completely, just guide them toward it.
-
-Respond with ONLY the hint text, no additional formatting.`;
-
-		const { text } = await generateText({
-			model: google("gemini-1.5-pro"),
-			prompt,
-		});
-
-		return text.trim();
-	} catch (error) {
-		console.error("AI hint generation error:", error);
-
-		// Fallback hints
-		const fallbackHints = ["Think about the key words in the riddle...", "Consider what the riddle is really asking about...", "Look for wordplay or double meanings...", "Try breaking down the riddle into parts...", "What could this riddle be describing?"];
-
-		return fallbackHints[Math.min(attempts - 1, fallbackHints.length - 1)];
-	}
-}

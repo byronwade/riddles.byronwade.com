@@ -21,49 +21,62 @@ export default async function Image() {
 					width: "100%",
 					display: "flex",
 					flexDirection: "column",
-					alignItems: "center",
-					justifyContent: "center",
-					backgroundColor: "#0a0a0a",
+					background: "linear-gradient(135deg, #111827 0%, #0a0a0a 100%)",
 					color: "#fafafa",
 					fontFamily: '"Geist Sans", sans-serif',
-					padding: "60px",
 				}}
 			>
+				{/* Header */}
 				<div
 					style={{
-						position: "absolute",
-						top: "40px",
-						left: "60px",
+						width: "100%",
 						display: "flex",
 						alignItems: "center",
+						padding: "40px 60px",
+						flexShrink: 0,
 					}}
 				>
-					<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+					<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#a1a1aa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
 						<path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />
 						<path d="M12 16a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" />
 						<path d="M12 12h.01" />
 					</svg>
-					<span style={{ marginLeft: "12px", fontSize: "32px", fontWeight: 700 }}>Daily Riddle</span>
+					<span style={{ marginLeft: "16px", fontSize: "30px", fontWeight: 600, color: "#d4d4d8" }}>Today's Riddle</span>
 				</div>
 
-				<p
-					style={{
-						fontSize: "48px",
-						textAlign: "center",
-						lineHeight: 1.3,
-						maxWidth: "90%",
-					}}
-				>
-					{riddle.riddle}
-				</p>
-
+				{/* Riddle Content Area */}
 				<div
 					style={{
-						position: "absolute",
-						bottom: "40px",
-						right: "60px",
+						flexGrow: 1,
+						display: "flex",
+						alignItems: "center",
+						justifyContent: "center",
+						padding: "0 80px",
+						overflow: "hidden",
+					}}
+				>
+					<p
+						style={{
+							fontSize: "52px",
+							textAlign: "center",
+							lineHeight: 1.4,
+							overflowWrap: "break-word",
+						}}
+					>
+						{riddle.riddle}
+					</p>
+				</div>
+
+				{/* Footer */}
+				<div
+					style={{
+						width: "100%",
+						display: "flex",
+						justifyContent: "flex-end",
 						fontSize: "24px",
-						color: "#a1a1aa",
+						color: "#71717a",
+						padding: "40px 60px",
+						flexShrink: 0,
 					}}
 				>
 					riddles.byronwade.com

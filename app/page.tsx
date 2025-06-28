@@ -1,8 +1,10 @@
 import { getDailyRiddle } from "./actions";
 import DailyRiddleGame from "./daily-riddle-game";
+import riddles from "@/lib/riddles.json";
 
 export default async function Home() {
 	const riddle = await getDailyRiddle();
+	const allRiddles = riddles;
 
 	return (
 		<>
@@ -37,7 +39,7 @@ export default async function Home() {
 						<h2 id="game-heading" className="sr-only">
 							Today&apos;s Daily Riddle Challenge
 						</h2>
-						<DailyRiddleGame initialRiddle={riddle} />
+						<DailyRiddleGame initialRiddle={riddle} allRiddles={allRiddles} />
 					</section>
 
 					{/* Hidden FAQ for SEO */}
