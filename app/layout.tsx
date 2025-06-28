@@ -77,6 +77,7 @@ export const metadata: Metadata = {
 		},
 	},
 	other: {
+		"fb:app_id": "1271658267944136",
 		"mobile-web-app-capable": "yes",
 		"apple-mobile-web-app-capable": "yes",
 		"apple-mobile-web-app-status-bar-style": "default",
